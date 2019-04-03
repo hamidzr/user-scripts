@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    https://man.hamidzare.xyz
-// @version      0.1
+// @version      0.2.0
 // @description  try to take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -12,22 +12,29 @@
 
 'use strict';
 
-(() => {
+window.h = {};
 
-  window.h = {};
+// download text
+window.h.download = (filename, text) => {
+  var element = document.createElement('a');
+  element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+  element.setAttribute('download', filename);
 
-  // download text
-  window.h.download = (filename, text) => {
-    var element = document.createElement('a');
-    element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
-    element.setAttribute('download', filename);
+  element.style.display = 'none';
+  document.body.appendChild(element);
 
-    element.style.display = 'none';
-    document.body.appendChild(element);
+  element.click();
 
-    element.click();
+  document.body.removeChild(element);
+};
 
-    document.body.removeChild(element);
-  };
+// alias for download
+window.h.dl = window.h.download;
 
-})();
+window.h.findAll = query => {
+  return Array.from(document.querySelectorAll(query));
+};
+
+window.h.extract = query => {
+  return window.h.findAll(query).map(el => el.innerText);
+};
