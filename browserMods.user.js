@@ -6,8 +6,8 @@
 // @author       Hamid Zare
 // @match        *://*/*
 // @grant        none
-// @updateURL
-// @downloadURL
+// @updateURL    https://github.com/hamidzr/user-scripts/raw/master/browserMods.user.js
+// @downloadURL  https://github.com/hamidzr/user-scripts/raw/master/browserMods.user.js
 // ==/UserScript==
 
 'use strict';
