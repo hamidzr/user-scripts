@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    https://man.hamidzare.xyz
-// @version      0.2.1
+// @version      0.3.0
 // @description  try to take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -35,8 +35,54 @@ h.findAll = query => {
   return Array.from(document.querySelectorAll(query));
 };
 
-h.extract = query => {
-  return h.findAll(query).map(el => el.innerText);
+// querySelectorAll that returns text
+h.textSelector = (advSelector, parentEl=document) => {
+  const parseDescriptor = str => {
+    return str.split('@');
+  };
+
+  const [selector, htmlAttr] = parseDescriptor(advSelector);
+
+  let rv = parentEl.querySelectorAll(selector);
+  let res = Array.from(rv)
+    .map(el => {
+      if (htmlAttr) {
+        return el[htmlAttr];
+      }
+      return el.innerText;
+
+    });
+
+  // reduce single arrays to first item
+  if (res.length === 1) res = res[0].trim();
+  if (res.length === 0) res = null;
+  return res;
+};
+
+// scrape for text
+// descriptor: a string or an object describing desired info
+// finder: limits scope of the descriptor to each matched element
+h.extract = (descriptor, finder) => {
+  const _parser = (parentEl, description) => {
+    let res;
+    if (typeof description === 'string') {
+      res = h.textSelector(description, parentEl);
+    } else {
+      res = {};
+      for (let attr in description) {
+        res[attr] = h.textSelector(description[attr], parentEl);
+      };
+    }
+
+    return res;
+  };
+
+  if (!finder) { // parsing a single item
+    return _parser(document, descriptor);
+  }
+
+  return h.findAll(finder)
+    .map(el => _parser(el, descriptor));
 };
 
 
