@@ -5,6 +5,7 @@
 // @description  try to take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
+// @exclude      https://docs.google.com/*
 // @grant        none
 // @updateURL    https://github.com/hamidzr/user-scripts/raw/master/browserMods.user.js
 // @downloadURL  https://github.com/hamidzr/user-scripts/raw/master/browserMods.user.js
