@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    https://man.hamidzare.xyz
-// @version      0.3.0
+// @version      0.4.0
 // @description  try to take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -14,6 +14,8 @@
 'use strict';
 
 const h = {};
+// attach it to the window
+window.h = h;
 
 // download text
 h.download = (filename, text) => {
@@ -86,6 +88,29 @@ h.extract = (descriptor, finder) => {
     .map(el => _parser(el, descriptor));
 };
 
+h._matchesRegex = (el, regex) => {
+  return regex.test(el.innerText);
+};
 
-// attach it to the window
-window.h = h;
+// hides items based on regex
+h.hideItems = (selector, regex) => {
+  let els = h.findAll(selector);
+
+  // if not one, make it into a regex
+  if (typeof regex === 'string') {
+    let hasCapitalR = /[A-Z]/;
+    let opts = 'i';
+    if (hasCapitalR.test(regex)) {
+      opts = '';
+    }
+    regex = RegExp(regex, opts);
+  }
+
+  let matchingEls = els.filter(el => h._matchesRegex(el, regex));
+  matchingEls.forEach(el => {
+    // TODO delete the element
+    el.style.display = 'none';
+  });
+
+  return matchingEls;
+};
