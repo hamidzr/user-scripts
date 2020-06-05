@@ -1,28 +1,23 @@
 // ==UserScript==
 // @name         GitHub PullRequests Plus
 // @namespace    http://tampermonkey.net/
-// @version      0.3.1
+// @version      0.3.2
 // @updateURL
-// @description  Displays a bunch of usefull information next to the github pullrequests such as diff stats and latest comments
+// @description  Display additional information next to the github pull requests.
 // @author       Hamid Zare @hamidzr
 // @require      https://cdnjs.cloudflare.com/ajax/libs/axios/0.16.2/axios.min.js
-// @match        https://github.com/*/*
+// @match        https://github.com/*/*/pulls/*
 // @run-at document-idle
 // ==/UserScript==
 
 'use strict';
 
 let parser = new DOMParser();
-let prevLocation;
-const PAGECHECKDELAY = 1000;
+const PAGECHECKDELAY = 5000;
 
 //check to see if we recently arrived on pullrequests page. (due to ajax loading)
-setInterval(() => {
-  if (prevLocation !== location.href && location.href.endsWith('/pulls')) {
-    console.log('we are on the pulls page');
-    setupPrPage();
-  }
-  prevLocation = location.href;
+setTimeout(() => {
+  setupPrPage();
 }, PAGECHECKDELAY);
 
 const selectors = {
