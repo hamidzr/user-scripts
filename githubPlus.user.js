@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GitHub PullRequests Plus
 // @namespace    http://tampermonkey.net/
-// @version      0.3.0
+// @version      0.3.1
 // @updateURL
 // @description  Displays a bunch of usefull information next to the github pullrequests such as diff stats and latest comments
 // @author       Hamid Zare @hamidzr
@@ -9,6 +9,8 @@
 // @match        https://github.com/*/*
 // @run-at document-idle
 // ==/UserScript==
+
+'use strict';
 
 let parser = new DOMParser();
 let prevLocation;
@@ -23,15 +25,18 @@ setInterval(() => {
   prevLocation = location.href;
 }, PAGECHECKDELAY);
 
+const selectors = {
+  prATags: 'div.js-issue-row a[href*="/pull/"].js-navigation-open',
+};
+
 // setup pull request page
 function setupPrPage() {
   // add preview wrapper element to dom
-  const sideSpace = (document.body.clientWidth - document.querySelector('div.issues-listing').offsetWidth ) / 2;
-  const previewWrapper = parser.parseFromString(`<div id="previewWrapper" style="position:fixed;left: 10px; top: 15rem; width: ${sideSpace-20}px;"></div>`, 'text/html').body.firstChild;
-  document.body.append(previewWrapper);
+  // const sideSpace = (document.body.clientWidth - document.querySelector('div.issues-listing').offsetWidth ) / 2;
+  // const previewWrapper = parser.parseFromString(`<div id="previewWrapper" style="position:fixed;left: 10px; top: 15rem; width: ${sideSpace-20}px;"></div>`, 'text/html').body.firstChild;
+  // document.body.append(previewWrapper);
 
-  console.log('getting diffstats and previews');
-  document.querySelectorAll('ul.js-navigation-container .js-navigation-open').forEach(a => {
+  document.querySelectorAll(selectors.prATags).forEach(a => {
     axios.get(a.href).then( resp => {
       const pullDoc = parser.parseFromString(resp.data, 'text/html');
       const diffStat = pullDoc.getElementById('diffstat');
