@@ -1,8 +1,7 @@
 // ==UserScript==
 // @name         GitHub PR Diffs
-// @namespace    http://tampermonkey.net/
+// @namespace    https://hamidza.re
 // @version      0.1.0
-// @updateURL
 // @description  Show pull request diff stats next to each PR in PR list view.
 // @author       Hamid Zare @hamidzr
 // @require      https://cdnjs.cloudflare.com/ajax/libs/axios/0.19.2/axios.min.js

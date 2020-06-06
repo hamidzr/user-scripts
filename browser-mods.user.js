@@ -1,14 +1,12 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
-// @namespace    https://man.hamidzare.xyz
+// @namespace    http://hamidza.re
 // @version      0.4.0
 // @description  try to take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
 // @exclude      https://docs.google.com/*
 // @grant        none
-// @updateURL    https://github.com/hamidzr/user-scripts/raw/master/browserMods.user.js
-// @downloadURL  https://github.com/hamidzr/user-scripts/raw/master/browserMods.user.js
 // ==/UserScript==
 
 'use strict';
