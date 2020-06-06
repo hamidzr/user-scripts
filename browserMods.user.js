@@ -13,12 +13,12 @@
 
 'use strict';
 
-const h = {};
+const hz = {};
 // attach it to the window
-window.h = h;
+window.hz = hz;
 
 // download text
-h.download = (filename, text) => {
+hz.download = (filename, text) => {
   var element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
   element.setAttribute('download', filename);
@@ -32,14 +32,14 @@ h.download = (filename, text) => {
 };
 
 // alias for download
-h.dl = h.download;
+hz.dl = hz.download;
 
-h.findAll = query => {
+hz.findAll = query => {
   return Array.from(document.querySelectorAll(query));
 };
 
 // querySelectorAll that returns text
-h.textSelector = (advSelector, parentEl=document) => {
+hz.textSelector = (advSelector, parentEl=document) => {
   const parseDescriptor = str => {
     return str.split('@');
   };
@@ -65,15 +65,15 @@ h.textSelector = (advSelector, parentEl=document) => {
 // scrape for text
 // descriptor: a string or an object describing desired info
 // finder: limits scope of the descriptor to each matched element
-h.extract = (descriptor, finder) => {
+hz.extract = (descriptor, finder) => {
   const _parser = (parentEl, description) => {
     let res;
     if (typeof description === 'string') {
-      res = h.textSelector(description, parentEl);
+      res = hz.textSelector(description, parentEl);
     } else {
       res = {};
       for (let attr in description) {
-        res[attr] = h.textSelector(description[attr], parentEl);
+        res[attr] = hz.textSelector(description[attr], parentEl);
       };
     }
 
@@ -84,17 +84,17 @@ h.extract = (descriptor, finder) => {
     return _parser(document, descriptor);
   }
 
-  return h.findAll(finder)
+  return hz.findAll(finder)
     .map(el => _parser(el, descriptor));
 };
 
-h._matchesRegex = (el, regex) => {
+hz._matchesRegex = (el, regex) => {
   return regex.test(el.innerText);
 };
 
 // hides items based on regex
-h.hideItems = (selector, regex) => {
-  let els = h.findAll(selector);
+hz.hideItems = (selector, regex) => {
+  let els = hz.findAll(selector);
 
   // if not one, make it into a regex
   if (typeof regex === 'string') {
@@ -106,7 +106,7 @@ h.hideItems = (selector, regex) => {
     regex = RegExp(regex, opts);
   }
 
-  let matchingEls = els.filter(el => h._matchesRegex(el, regex));
+  let matchingEls = els.filter(el => hz._matchesRegex(el, regex));
   matchingEls.forEach(el => {
     // TODO delete the element
     el.style.display = 'none';
