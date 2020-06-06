@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.4.0
+// @version      0.4.1
 // @description  try to take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -11,12 +11,12 @@
 
 'use strict';
 
-const hz = {};
+const hmd = {};
 // attach it to the window
-window.hz = hz;
+window.hmd = hmd;
 
 // download text
-hz.download = (filename, text) => {
+hmd.download = (filename, text) => {
   var element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
   element.setAttribute('download', filename);
@@ -30,14 +30,14 @@ hz.download = (filename, text) => {
 };
 
 // alias for download
-hz.dl = hz.download;
+hmd.dl = hmd.download;
 
-hz.findAll = query => {
+hmd.findAll = query => {
   return Array.from(document.querySelectorAll(query));
 };
 
 // querySelectorAll that returns text
-hz.textSelector = (advSelector, parentEl=document) => {
+hmd.textSelector = (advSelector, parentEl=document) => {
   const parseDescriptor = str => {
     return str.split('@');
   };
@@ -63,15 +63,15 @@ hz.textSelector = (advSelector, parentEl=document) => {
 // scrape for text
 // descriptor: a string or an object describing desired info
 // finder: limits scope of the descriptor to each matched element
-hz.extract = (descriptor, finder) => {
+hmd.extract = (descriptor, finder) => {
   const _parser = (parentEl, description) => {
     let res;
     if (typeof description === 'string') {
-      res = hz.textSelector(description, parentEl);
+      res = hmd.textSelector(description, parentEl);
     } else {
       res = {};
       for (let attr in description) {
-        res[attr] = hz.textSelector(description[attr], parentEl);
+        res[attr] = hmd.textSelector(description[attr], parentEl);
       };
     }
 
@@ -82,17 +82,17 @@ hz.extract = (descriptor, finder) => {
     return _parser(document, descriptor);
   }
 
-  return hz.findAll(finder)
+  return hmd.findAll(finder)
     .map(el => _parser(el, descriptor));
 };
 
-hz._matchesRegex = (el, regex) => {
+hmd._matchesRegex = (el, regex) => {
   return regex.test(el.innerText);
 };
 
 // hides items based on regex
-hz.hideItems = (selector, regex) => {
-  let els = hz.findAll(selector);
+hmd.hideItems = (selector, regex) => {
+  let els = hmd.findAll(selector);
 
   // if not one, make it into a regex
   if (typeof regex === 'string') {
@@ -104,7 +104,7 @@ hz.hideItems = (selector, regex) => {
     regex = RegExp(regex, opts);
   }
 
-  let matchingEls = els.filter(el => hz._matchesRegex(el, regex));
+  let matchingEls = els.filter(el => hmd._matchesRegex(el, regex));
   matchingEls.forEach(el => {
     // TODO delete the element
     el.style.display = 'none';
