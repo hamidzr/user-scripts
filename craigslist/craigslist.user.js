@@ -1,19 +1,18 @@
 // ==UserScript==
 // @name         Craigslist Enhancements
 // @namespace    http://tampermonkey.net/
-// @version      0.1.0
-// @updateURL
+// @version      0.1.1
 // @description  TODO
 // @author       Hamid Zare @hamidzr
 // @match        https://*.craigslist.org/**/*.html
-// @run-at document-idle
+// @run-at       document-idle
 // ==/UserScript==
 
 'use strict';
 
 const matchRe = new RegExp(/https:\/\/.*.craigslist.org\/\w{3}\/\w{1,3}\/.*\/\d+.html/);
 
-const PAGECHECKDELAY = 500;
+const PAGECHECKDELAY = 50;
 
 //check to see if we recently arrived on pullrequests page. (due to ajax loading)
 setTimeout(() => {
