@@ -27,9 +27,10 @@ const getRows = () => {
 };
 
 function main() {
-  const text =  getRows().join('\n');
+  const rows =  getRows().join('\n');
+  const header = `symbol, shares\n`;
   // use the loaded browser-mods from hamidzr/user-script to download the resulting csv
-  hmd.download('holdings.csv', text);
+  hmd.download('holdings.csv', header + rows);
 }
 
 main();
