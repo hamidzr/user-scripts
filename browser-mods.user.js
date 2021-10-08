@@ -112,3 +112,8 @@ hmd.hideItems = (selector, regex) => {
 
   return matchingEls;
 };
+
+hmd.sleep = ms => new Promise((resolve) => {
+  setTimeout(resolve, ms);
+});
+
