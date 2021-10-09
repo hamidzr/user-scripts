@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.4.1
-// @description  try to take over the world!
+// @version      0.5.4
+// @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
 // @exclude      https://docs.google.com/*
@@ -14,6 +14,7 @@
 const hmd = {};
 // attach it to the window
 window.hmd = hmd;
+hmd._state = {};
 
 // download text
 hmd.download = (filename, text) => {
@@ -116,4 +117,35 @@ hmd.hideItems = (selector, regex) => {
 hmd.sleep = ms => new Promise((resolve) => {
   setTimeout(resolve, ms);
 });
+
+
+hmd._watchRef = null;
+// to help with developing code in the dev console.
+// eg use ur editor, copy the code, then tab in the browser to test it out
+// suggestion use `main = () => {};`
+hmd.watchClipboard = (interval = 500) => {
+  hmd.clearWatch();
+  let lastClipboard = '';
+  const ref = setInterval(async () => {
+    if (! document.hasFocus()) return;
+    const src = await navigator.clipboard.readText();
+    if (src === '') return;
+    if (lastClipboard === src) return;
+    console.log(src);
+    try {
+      eval(src);
+    } catch (e) {
+      console.error(e);
+    }
+    lastClipboard = src;
+  }, interval);
+  hmd._watchRef = ref;
+  return ref;
+}
+
+hmd.clearWatch = () => {
+  if (hmd._watchRef === null) return;
+  clearInterval(hmd._watchRef);
+  hmd._watchRef = null;
+}
 
