@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.5.6
+// @version      0.5.7
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -149,16 +149,17 @@ hmd.clearWatch = () => {
   hmd._watchRef = null;
 }
 
+// TODO upgrade to an implementation supporting async conditions
 hmd.sleepUntil = async (f, timeoutMs = 5000) => {
   return new Promise((resolve, reject) => {
     let timeWas = new Date();
     let wait = setInterval(function() {
       if (f()) {
-        console.log("resolved after", new Date() - timeWas, "ms");
+        // console.log("resolved after", new Date() - timeWas, "ms");
         clearInterval(wait);
         resolve();
       } else if (new Date() - timeWas > timeoutMs) { // Timeout
-        console.log("rejected after", new Date() - timeWas, "ms");
+        // console.log("rejected after", new Date() - timeWas, "ms");
         clearInterval(wait);
         reject();
       }
