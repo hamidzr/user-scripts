@@ -1,14 +1,15 @@
 // ==UserScript==
 // @name         Helper to get help from Emma
 // @namespace    http://tampermonkey.net/
-// @version      0.1.0
+// @version      0.1.1
 // @updateURL
 // @description  TODO
 // @match        https://www.uscis.gov/tools/*
+// @match        https://ceciva.uscis.gov/Alme/*
 // @run-at document-idle
 // ==/UserScript==
 
-'use strict';
+// 'use strict';
 
 class Emma {
   NIT = undefined
@@ -106,7 +107,11 @@ class Emma {
     return document.querySelector(this.s.textInput).disabled;
   }
 
-  async fireReplies(msgList) {
+  async fireReplies(msgList, readClipboard=false) {
+    if (msgList === undefined && readClipboard) {
+      const clipboard = await hmd.readClipboard()
+      msgList = clipboard.split('\n');
+    }
     if (!Array.isArray(msgList)) {
       msgList = msgList.split('\n');
     }

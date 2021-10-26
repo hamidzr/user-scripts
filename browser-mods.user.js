@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.5.7
+// @version      0.6.0
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -117,6 +117,14 @@ hmd.hideItems = (selector, regex) => {
 hmd.sleep = ms => new Promise((resolve) => {
   setTimeout(resolve, ms);
 });
+
+
+hmd.readClipboard = async () => {
+  await hmd.sleepUntil(document.hasFocus.bind(document), 10000)
+  // if (! document.hasFocus()) return;
+  const clipboard = await navigator.clipboard.readText();
+  return clipboard;
+};
 
 
 hmd._watchRef = null;
