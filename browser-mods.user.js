@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.6.0
+// @version      0.7.0
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -16,9 +16,24 @@ const hmd = {};
 window.hmd = hmd;
 hmd._state = {};
 
+hmd._stringify = (any) => {
+  switch (typeof any) {
+    case 'string':
+      return any;
+    case 'array':
+      return any.map(stringify).join('\n');
+    default:
+      if (any instanceof Element) {
+        return any.innerText;
+      }
+      return JSON.stringify(any);
+  }
+}
+
 // download text
 hmd.download = (filename, text) => {
-  var element = document.createElement('a');
+  text = hmd._stringify(text);
+  const element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
   element.setAttribute('download', filename);
 
@@ -126,6 +141,13 @@ hmd.readClipboard = async () => {
   return clipboard;
 };
 
+hmd.writeClipboard = async (text) => {
+  // wait until the document is focused
+  console.log('waiting for the document to be focused');
+  await hmd.sleepUntil(document.hasFocus.bind(document), 10000);
+  await navigator.clipboard.writeText(text);
+  console.log('copied text to clipboard');
+}
 
 hmd._watchRef = null;
 // to help with developing code in the dev console.
