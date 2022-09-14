@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.7.1
+// @version      0.7.2
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -30,6 +30,10 @@ hmd._stringify = (any) => {
 
 // download text
 hmd.download = (filename, text) => {
+  if (text === undefined) {
+    // overload the function to support download(text);
+    return hmd.download('hbrowsermods.txt', filename);
+  }
   text = hmd._stringify(text);
   const element = document.createElement('a');
   element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
