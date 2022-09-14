@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.7.0
+// @version      0.7.1
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -17,17 +17,15 @@ window.hmd = hmd;
 hmd._state = {};
 
 hmd._stringify = (any) => {
-  switch (typeof any) {
-    case 'string':
-      return any;
-    case 'array':
-      return any.map(stringify).join('\n');
-    default:
-      if (any instanceof Element) {
-        return any.innerText;
-      }
-      return JSON.stringify(any);
+  if (typeof any === 'string')
+    return any;
+  if (Array.isArray(any)) {
+    return any.map(hmd._stringify).join('\n');
   }
+  if (any instanceof Element) {
+    return any.innerText;
+  }
+  return JSON.stringify(any);
 }
 
 // download text
