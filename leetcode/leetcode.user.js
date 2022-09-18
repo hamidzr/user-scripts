@@ -53,6 +53,7 @@ ${companyTags.join(', ')}
 `
 
 const getCode = () => {
+
   const cleanCode = (code) => {
     const toRemove = ['​', ' '];
     return code.replace(new RegExp(toRemove.join('|'), 'g'), '')
@@ -63,7 +64,20 @@ const getCode = () => {
     .map(cleanCode)
     .join('\n');
 
-  return code;
+  const prefix = `#!/usr/bin/env python3
+
+# emulate lc environment
+from typing import *
+from collections import *
+from functools import *
+import math
+`;
+
+  const suffix = `# if __name__ == "__main__":
+#   s = Solution()
+
+`
+  return [prefix, code, suffix].join('\n')
 }
 
 window.hmd = hmd || {};
