@@ -14,3 +14,4 @@ after installing the extension just point browser to the raw view of one of thes
 
 ## TODO
 - [ ] migrate from gists
+- [ ] linter
