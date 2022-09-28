@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.7.2
+// @version      0.7.3
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
 // @exclude      https://docs.google.com/*
+// @exclude      https://jamboard.google.com/*
 // @grant        none
 // ==/UserScript==
 

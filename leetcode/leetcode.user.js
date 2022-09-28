@@ -66,15 +66,27 @@ const getCode = () => {
 
   const prefix = `#!/usr/bin/env python3
 
-# emulate lc environment
+## emulate lc environment
+import math
+import heapq
+import functools
+import collections
+import typing
+import bisect
 from typing import *
 from collections import *
 from functools import *
-import math
 `;
 
   const suffix = `# if __name__ == "__main__":
 #   s = Solution()
+#   args: List = [[4,10,4,3,8,9]]
+#   print("in", *args)
+#   print("#########")
+#   o = s.lengthOfLIS(*args)
+#   print("#########")
+#   print("out", o)
+
 
 `
   return [prefix, code, suffix].join('\n')
