@@ -202,25 +202,34 @@ hmd.sleepUntil = async (f, timeoutMs = 5000) => {
   });
 };
 
-hmd.objectTreeJson = (obj, visited = {}, depth = 0, path = '') => {
-  let rv = {};
-  if (depth > 10) {
-    return rv;
-  }
-  if (visited[path]) {
-    return rv;
-  } else {
-    visited[path] = true;
-  }
-  for (let key in obj) {
-    let val = obj[key];
-    if (typeof val === 'object') {
-      rv[key] = hmd.objectTreeJson(val, depth + 1, path + '.' + key);
+/**
+predicate: (key, value) => boolean
+**/
+hmd.searchObjTree = (obj, maxDepth = 2, predicate = undefined) => {
+  const visited = new Set();
+  const skipKeys = new Set();
+
+  const find = (obj, depth = 0, path = '') => {
+    if (depth > maxDepth) return
+    if (visited.has(path)) {
+      return;
     } else {
-      rv[key] = val;
+      visited.add(path) // FIXME: isn't enough
+    }
+
+    for (let key in obj) {
+      if (skipKeys.has(key)) continue;
+      let val = obj[key];
+      if (predicate && predicate(key, val)) {
+        return {path, key, val}
+      }
+      if (typeof val === 'object') {
+        const rv = find(val, depth + 1, path + '.' + key);
+        if (rv !== undefined) return rv;
+      }
     }
   }
-  return rv;
+  return find(obj);
 };
 
 hmd.beep = () => {
