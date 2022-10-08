@@ -1,0 +1,27 @@
+{
+  "name": "user-scripts",
+  "version": "1.0.0",
+  "description": "What is a browser userscript? [Wikipedia article](https://en.wikipedia.org/wiki/Userscript)",
+  "main": "browser-mods.user.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/hamidzr/user-scripts.git"
+  },
+  "keywords": [
+    "tampermonkey",
+    "userscripts",
+    "greasemonkey"
+  ],
+  "author": "Hamid Zare",
+  "license": "GPLV2",
+  "bugs": {
+    "url": "https://github.com/hamidzr/user-scripts/issues"
+  },
+  "homepage": "https://github.com/hamidzr/user-scripts#readme",
+  "devDependencies": {
+    "prettier": "^2.7.1"
+  }
+}
