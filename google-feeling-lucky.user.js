@@ -19,10 +19,13 @@ mimick the "feeling luckly" button click. This script does that for you.
 const redirectToUrl = (url) => {
   console.log(`Redirecting to ${url}`);
   window.location.href = url;
-}
+};
 
 const url = new URL(window.location.href);
-const isAluckyQuery = url.href.replace(/[^a-zA-Z0-9 ]/g, '').toLowerCase().includes('feelinglucky');
+const isAluckyQuery = url.href
+  .replace(/[^a-zA-Z0-9 ]/g, '')
+  .toLowerCase()
+  .includes('feelinglucky');
 
 if (isAluckyQuery) {
   // get the first google search result and redirect to it
@@ -40,4 +43,3 @@ if (url.pathname === '/url') {
     redirectToUrl(urlParam);
   }
 }
-

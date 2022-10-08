@@ -32,9 +32,8 @@ const isRoomBoxVisible = () => {
 
 // asnyc functino to sleep for n miliseconds
 const sleep = (ms) => {
-  return new Promise(resolve => setTimeout(resolve, ms));
+  return new Promise((resolve) => setTimeout(resolve, ms));
 };
-
 
 // utility function to check for a condition in a loop with custom wait
 const waitFor = async (condition, wait, timeout) => {
@@ -47,7 +46,7 @@ const waitFor = async (condition, wait, timeout) => {
     }
   }
   return true;
-}
+};
 
 const main = async () => {
   // const prsQ = Array.from(document.querySelectorAll(selectors.prATags));
@@ -56,12 +55,12 @@ const main = async () => {
     if (visible) {
       window.alert('Room box visible');
       const room = getRoomBox();
-      console.log(room, room.href)
+      console.log(room, room.href);
       const response = await axios.get(room.href);
-      console.log('resp', response)
+      console.log('resp', response);
       const doc = parser.parseFromString(response.data, 'text/html');
       const total = doc.querySelector(selectors.detailTotal);
-      console.log('total', total && total.innerText)
+      console.log('total', total && total.innerText);
       window.alert('total', total.innerText);
       break;
     }
@@ -75,8 +74,7 @@ const main = async () => {
     //   prAnchor.append(diffStats);
     // }
     // }
-  };
-}
-
+  }
+};
 
 main();

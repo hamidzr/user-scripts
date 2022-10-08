@@ -45,20 +45,20 @@ function main() {
     section#postingbody {
       width: unset !important;
     }
-  `)
+  `);
 
-  const els = Array.from(document.querySelectorAll('a.thumb')).map(a => a.href)
-  const gallery = document.createElement('div')
-  els.forEach(src => {
-    const el = document.createElement('img')
-    el.src = src
+  const els = Array.from(document.querySelectorAll('a.thumb')).map((a) => a.href);
+  const gallery = document.createElement('div');
+  els.forEach((src) => {
+    const el = document.createElement('img');
+    el.src = src;
     /* setMaxImgSize(src); */
-    gallery.appendChild(el)
-  })
-  gallery.className = 'gallery'
-  document.querySelector('figure.iw').remove()
-  document.querySelector('section.userbody').appendChild(gallery)
-};
+    gallery.appendChild(el);
+  });
+  gallery.className = 'gallery';
+  document.querySelector('figure.iw').remove();
+  document.querySelector('section.userbody').appendChild(gallery);
+}
 
 /**
  * Utility function to add CSS in multiple passes.
@@ -86,8 +86,6 @@ function addStyle(styleString) {
 
 // }
 
-
-
 /* setTimeout(() => { */
 /*     addStyle(` */
 /*       .gallery { */
@@ -95,7 +93,6 @@ function addStyle(styleString) {
 /*       } */
 /*     `) */
 /* }, 2000) */
-
 
 function toggleVisibility(element) {
   if (element.style.display === 'none') {
@@ -109,7 +106,7 @@ function toggleVisibility(element) {
 function toArray(obj) {
   var array = [];
   // iterate backwards ensuring that length is an UInt32
-  for (var i = obj.length >>> 0; i--;) {
+  for (var i = obj.length >>> 0; i--; ) {
     array[i] = obj[i];
   }
   return array;

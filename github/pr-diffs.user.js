@@ -15,7 +15,7 @@ const parser = new DOMParser();
 
 const selectors = {
   prATags: 'div.js-issue-row a[href*="/pull/"].js-navigation-open',
-  diffStats: '#diffstat'
+  diffStats: '#diffstat',
 };
 
 const main = async () => {

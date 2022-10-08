@@ -12,7 +12,7 @@
 // 'use strict';
 
 class Emma {
-  NIT = undefined
+  NIT = undefined;
   s = {
     agent: '.aa_agentresp',
     user: '.aa_userresp',
@@ -21,50 +21,52 @@ class Emma {
     sendBtn: '#aagent_ask',
   };
   s2 = {
-    anyChat: `${this.s.user}, ${this.s.user + this.s.old}, ${this.s.agent}, ${this.s.agent + this.s.old}`,
+    anyChat: `${this.s.user}, ${this.s.user + this.s.old}, ${this.s.agent}, ${
+      this.s.agent + this.s.old
+    }`,
   };
-  _onReceive = {}
+  _onReceive = {};
 
   constructor(nit) {
     this.NIT = nit;
-    console.log('creating with NIT', this.NIT)
+    console.log('creating with NIT', this.NIT);
     this._readMessages();
     this._onReceive = {
-      beep: msg => {
+      beep: (msg) => {
         hmd.beep();
       },
     };
   }
 
   allChatEls() {
-    const chats = hmd.findAll(this.s2.anyChat)
+    const chats = hmd.findAll(this.s2.anyChat);
     return chats;
   }
 
   allChats() {
-    return hmd.textSelector(this.s2.anyChat)
+    return hmd.textSelector(this.s2.anyChat);
   }
 
   _last(arr) {
     if (arr.length < 1) return null;
-    const last = arr[arr.length-1]
-    return last
+    const last = arr[arr.length - 1];
+    return last;
   }
 
   lastChat() {
-    return this._last(this.allChatEls())
+    return this._last(this.allChatEls());
   }
 
   _elText(el) {
-    return el.innertText
+    return el.innertText;
   }
 
   agentMsgs() {
-    return hmd.textSelector(`${this.s.agent}, ${this.s.agent + this.s.old}`)
+    return hmd.textSelector(`${this.s.agent}, ${this.s.agent + this.s.old}`);
   }
 
   userMsgs() {
-    return hmd.textSelector(`${this.s.user}, ${this.s.user + this.s.old}`)
+    return hmd.textSelector(`${this.s.user}, ${this.s.user + this.s.old}`);
   }
 
   async _onNewMessage(msg) {
@@ -82,8 +84,8 @@ class Emma {
     let lastMsg = '';
     let lastChatCount = 0;
     while (true) {
-      const agentMsgs = this.agentMsgs()
-      const text = this._last(agentMsgs)
+      const agentMsgs = this.agentMsgs();
+      const text = this._last(agentMsgs);
       if (lastMsg === text && lastChatCount === agentMsgs.length) {
         await hmd.sleep(50);
         continue;
@@ -91,15 +93,15 @@ class Emma {
       // new message
       this._onNewMessage(text);
       lastMsg = text;
-      lastChatCount = agentMsgs.length
+      lastChatCount = agentMsgs.length;
     }
   }
 
   async sendMessage(text) {
-    console.log('messaging', text)
+    console.log('messaging', text);
     this.NIT.UI.Input.setText.call(this.NIT, text);
     // add artifical wait and typing
-    this.NIT.UI.Input.ask.call(this.NIT)
+    this.NIT.UI.Input.ask.call(this.NIT);
     await hmd.sleepUntil(() => !this.isInputDisabled(), 30000);
   }
 
@@ -107,17 +109,17 @@ class Emma {
     return document.querySelector(this.s.textInput).disabled;
   }
 
-  async fireReplies(msgList, readClipboard=false) {
+  async fireReplies(msgList, readClipboard = false) {
     if (msgList === undefined && readClipboard) {
-      const clipboard = await hmd.readClipboard()
+      const clipboard = await hmd.readClipboard();
       msgList = clipboard.split('\n');
     }
     if (!Array.isArray(msgList)) {
       msgList = msgList.split('\n');
     }
     for (let msg of msgList) {
-      await hmd.sleepUntil(this.isAwaitingResponse.bind(this), 30000)
-      await this.sendMessage(msg)
+      await hmd.sleepUntil(this.isAwaitingResponse.bind(this), 30000);
+      await this.sendMessage(msg);
     }
   }
 
@@ -133,9 +135,9 @@ class Emma {
   announceResponses() {}
 
   exportChat() {
-    hmd.download(('uscis-chat.txt', this.allChats().join('\n')), text)
-    hmd.download(('uscis-chat.agent.txt', this.agentMsgs().join('\n')), text)
-    hmd.download(('uscis-chat.user.txt', this.userMsgs().join('\n')), text)
+    hmd.download(('uscis-chat.txt', this.allChats().join('\n')), text);
+    hmd.download(('uscis-chat.agent.txt', this.agentMsgs().join('\n')), text);
+    hmd.download(('uscis-chat.user.txt', this.userMsgs().join('\n')), text);
   }
 }
 

@@ -7,11 +7,11 @@ after installing the extension just point browser to the raw view of one of thes
 
 ![raw button](./screenshots/raw-btn.png)
 
-
 ## GitHub ++
 
 ![diff stats](./screenshots/added-diffs.png)
 
 ## TODO
+
 - [ ] migrate from gists
 - [ ] linter

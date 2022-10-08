@@ -31,12 +31,14 @@ function setupPrPage() {
   // const previewWrapper = parser.parseFromString(`<div id="previewWrapper" style="position:fixed;left: 10px; top: 15rem; width: ${sideSpace-20}px;"></div>`, 'text/html').body.firstChild;
   // document.body.append(previewWrapper);
 
-  document.querySelectorAll(selectors.prATags).forEach(a => {
-    axios.get(a.href).then( resp => {
-      const pullDoc = parser.parseFromString(resp.data, 'text/html');
-      const diffStat = pullDoc.getElementById('diffstat');
-      a.append(diffStat);
-      /** disable last comment view
+  document.querySelectorAll(selectors.prATags).forEach((a) => {
+    axios
+      .get(a.href)
+      .then((resp) => {
+        const pullDoc = parser.parseFromString(resp.data, 'text/html');
+        const diffStat = pullDoc.getElementById('diffstat');
+        a.append(diffStat);
+        /** disable last comment view
                 let nodes = pullDoc.querySelector('.js-discussion').childNodes;
                 nodes = toArray(nodes).filter(node => node.nodeType === 1);
                 let el = nodes[nodes.length -2];
@@ -50,11 +52,10 @@ function setupPrPage() {
                     toggleVisibility(el);
                 });
                 */
-    }).catch(console.error);
-
+      })
+      .catch(console.error);
   });
-};
-
+}
 
 function toggleVisibility(element) {
   if (element.style.display === 'none') {
@@ -68,7 +69,7 @@ function toggleVisibility(element) {
 function toArray(obj) {
   var array = [];
   // iterate backwards ensuring that length is an UInt32
-  for (var i = obj.length >>> 0; i--;) {
+  for (var i = obj.length >>> 0; i--; ) {
     array[i] = obj[i];
   }
   return array;

@@ -17,14 +17,15 @@ const selectors = {
   zoomLinks: 'a[href*="zoom.us/j/"]',
 };
 
-const buildZoomHref = (meetingNumber) => `zoommtg://zoom.us/join?action=join&confno=${meetingNumber}`;
+const buildZoomHref = (meetingNumber) =>
+  `zoommtg://zoom.us/join?action=join&confno=${meetingNumber}`;
 
-const meetingNumberRe = new RegExp('(?<=zoom.us\/j\/)\d+', 'i');
+const meetingNumberRe = new RegExp('(?<=zoom.us/j/)d+', 'i');
 
 const main = () => {
   const zooms = Array.from(document.querySelectorAll(selectors.zoomLinks));
   console.log('found zooms', zooms);
-  zooms.forEach(zoomA => {
+  zooms.forEach((zoomA) => {
     const meetingNumber = zoomA.href.match(meetingNumberRe);
     if (meetingNumber) zoomA.href = buildZoomHref(meetingNumber);
   });
