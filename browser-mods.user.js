@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.8.0
+// @version      0.9.0
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -56,6 +56,31 @@ hmd.dl = hmd.download;
 hmd.findAll = query => {
   return Array.from(document.querySelectorAll(query));
 };
+
+/** find siblings given an anchor el and a predicate */
+hmd.findSiblingJs = (anchor, predicate) => {
+  // starting from the element to to next and previous siblings
+  // and run predicate on them. return as soon as one is found
+  let next = anchor.nextElementSibling;
+  while (next) {
+    if (predicate(next))
+      return next;
+    next = next.nextElementSibling;
+  }
+  let prev = anchor.previousElementSibling;
+  while (prev) {
+    if (predicate(prev))
+      return prev;
+    prev = prev.previousElementSibling;
+  }
+}
+
+/** get the first sibling of an initial target query string */
+hmd.findSibling = (target, sibling) => {
+  const anchor = document.querySelector(target)
+  if (!anchor) return null;
+  return anchor.parentElement.querySelector(sibling);
+}
 
 // querySelectorAll that returns text
 hmd.textSelector = (advSelector, parentEl=document) => {
@@ -201,6 +226,19 @@ hmd.sleepUntil = async (f, timeoutMs = 5000) => {
     }, 20);
   });
 };
+
+hmd._logWrapper = (level, ...msgs) => {
+  const KEY = 'hebug';
+    if (!window.localStorage.getItem(KEY)) return;
+    console[level](...msgs);
+};
+hmd.logger = {
+    log: (...msgs) => hmd._logWrapper('log', ...msgs),
+    warn: (...msgs) => hmd._logWrapper('warn', ...msgs),
+    error: (...msgs) => hmd._logWrapper('error', ...msgs),
+    info: (...msgs) => hmd._logWrapper('info', ...msgs),
+}
+
 
 /**
 predicate: (key, value) => boolean
