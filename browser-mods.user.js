@@ -8,6 +8,7 @@
 // @exclude      https://docs.google.com/*
 // @exclude      https://jamboard.google.com/*
 // @grant        none
+// @run-at       document-start
 // ==/UserScript==
 
 'use strict';
