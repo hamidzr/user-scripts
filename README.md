@@ -13,5 +13,6 @@ after installing the extension just point browser to the raw view of one of thes
 
 ## TODO
 
+- [ ] feat: select a list of elements: reorder or filter them
 - [ ] migrate from gists
-- [ ] linter
+- [x] linter
