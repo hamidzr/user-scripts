@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.9.0
+// @version      0.10.0
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -13,7 +13,9 @@
 
 'use strict';
 
-const hmd = {};
+const hmd = {
+  cc: {},
+};
 // attach it to the window
 window.hmd = hmd;
 hmd._state = {};
@@ -56,20 +58,40 @@ hmd.dl = hmd.download;
 hmd.findAll = (query) => {
   return Array.from(document.querySelectorAll(query));
 };
+hmd.find = async (selector, opts) => {
+  opts = {
+    timeout: 2000,
+    ...opts,
+  };
+  if (opts.timeout) {
+    await hmd.sleepUntil(() => document.querySelector(selector), opts.timeout);
+  }
+  return document.querySelector(selector);
+};
+
+hmd.elIncludes = (el, query) => {
+  query = {
+    text: undefined,
+    ...query,
+  };
+  if (query.text) {
+    return el.innerText.includes(query.text);
+  }
+};
 
 /** find siblings given an anchor el and a predicate */
 hmd.findSiblingJs = (anchor, predicate) => {
   // starting from the element to to next and previous siblings
   // and run predicate on them. return as soon as one is found
-  let next = anchor.nextElementSibling;
-  while (next) {
-    if (predicate(next)) return next;
-    next = next.nextElementSibling;
+  let cur = anchor.nextElementSibling;
+  while (cur) {
+    if (predicate(cur)) return cur;
+    cur = cur.nextElementSibling;
   }
-  let prev = anchor.previousElementSibling;
-  while (prev) {
-    if (predicate(prev)) return prev;
-    prev = prev.previousElementSibling;
+  cur = anchor.previousElementSibling;
+  while (cur) {
+    if (predicate(cur)) return cur;
+    cur = cur.previousElementSibling;
   }
 };
 
@@ -267,11 +289,29 @@ hmd.searchObjTree = (obj, maxDepth = 2, predicate = undefined) => {
   return find(obj);
 };
 
+hmd.cc.runMain = async (main, ...args) => {
+  setTimeout(async () => {
+    try {
+      console.log('running main');
+      await main(...args);
+    } catch (e) {
+      console.error(e);
+    }
+  }, 1000);
+};
+
 hmd.beep = () => {
   const snd = new Audio(hmd._data.beep);
   snd.play();
 };
 
+hmd.click = (selector) => {
+  const el = document.querySelector(selector);
+  if (!el) return;
+  el.click();
+};
+
+/** list of added global objects */
 hmd.addedGlobals = () => {
   const baseKeys = hmd._data.windowObjBaseline
     .split(',')
