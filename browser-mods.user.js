@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.10.0
+// @version      0.10.1
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -248,7 +248,7 @@ hmd.sleepUntil = async (f, timeoutMs = 5000) => {
 
 hmd._logWrapper = (level, ...msgs) => {
   const KEY = 'hebug';
-  if (!window.localStorage.getItem(KEY)) return;
+  if (window.localStorage.getItem(KEY) != 'true') return;
   console[level](...msgs);
 };
 
