@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Hamid's Browser Mods
 // @namespace    http://hamidza.re
-// @version      0.10.1
+// @version      0.11.0
 // @description  Take over the world!
 // @author       Hamid Zare
 // @match        *://*/*
@@ -57,6 +57,15 @@ hmd.dl = hmd.download;
 
 hmd.findAll = (query) => {
   return Array.from(document.querySelectorAll(query));
+};
+/** search for a list of selector and collect the results. ignore misses */
+hmd.findList = (sels) => {
+  const results = [];
+  for (const sel of sels) {
+    const el = document.querySelector(sel);
+    if (el) results.push(el);
+  }
+  return results;
 };
 hmd.find = async (selector, opts) => {
   opts = {
