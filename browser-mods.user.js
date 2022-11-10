@@ -237,22 +237,21 @@ hmd.clearWatch = () => {
 };
 
 // TODO upgrade to an implementation supporting async conditions
-hmd.sleepUntil = async (f, timeoutMs = 5000, pollMs = 20) => {
+hmd.sleepUntil = async (f, timeoutMs = 5000) => {
   return new Promise((resolve, reject) => {
     let timeWas = new Date();
     let wait = setInterval(function () {
-      out = f();
-      if (out) {
+      if (f()) {
         // console.log("resolved after", new Date() - timeWas, "ms");
         clearInterval(wait);
-        resolve(out);
+        resolve();
       } else if (new Date() - timeWas > timeoutMs) {
         // Timeout
         // console.log("rejected after", new Date() - timeWas, "ms");
         clearInterval(wait);
-        reject('timeout');
+        reject();
       }
-    }, pollMs);
+    }, 20);
   });
 };
 
