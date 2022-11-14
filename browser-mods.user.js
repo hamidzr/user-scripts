@@ -241,15 +241,16 @@ hmd.sleepUntil = async (f, timeoutMs = 5000) => {
   return new Promise((resolve, reject) => {
     let timeWas = new Date();
     let wait = setInterval(function () {
-      if (f()) {
+      const out = f();
+      if (out) {
         // console.log("resolved after", new Date() - timeWas, "ms");
         clearInterval(wait);
-        resolve();
+        resolve(out);
       } else if (new Date() - timeWas > timeoutMs) {
         // Timeout
         // console.log("rejected after", new Date() - timeWas, "ms");
         clearInterval(wait);
-        reject();
+        reject('timeout');
       }
     }, 20);
   });
