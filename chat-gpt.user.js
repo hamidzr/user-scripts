@@ -8,6 +8,11 @@
 // @run-at       context-menu
 // ==/UserScript==
 
+/*
+- Usage: right click on the page: Tampermonkey -> Chat GPT Mods
+- Installation: follow README.md
+*/
+
 const turndownService = new TurndownService();
 
 const selectors = {
@@ -33,11 +38,3 @@ const msgs = getMessages();
 console.log(msgs);
 copyToClipboard(msgs);
 window.alert('Copied to clipboard!');
-
-// // add a download button to the page
-// const button = document.createElement('button');
-// button.innerText = 'Download';
-// button.addEventListener('click', () => {
-//   downloadMessages(getMessages());
-// });
-// document.body.appendChild(button);
