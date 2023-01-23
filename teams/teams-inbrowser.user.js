@@ -12,6 +12,7 @@
 
 const sels = {
   btn: 'button[data-tid="joinOnWeb"]',
+  micMarker: '#calling-prejoin-mic-state-id', // default to disabled mic.
 };
 
 const main = async () => {
