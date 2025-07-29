@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Auto-focus & New Chat Shortcut
 // @namespace    http://tampermonkey.net/
-// @version      1.2
-// @description  Focus editor on window focus (or Ctrl+F/I) and adds Ctrl+N for new chat.
+// @version      1.3
+// @description  Focus editor on window focus (or Ctrl+I) and adds Ctrl+N for new chat, Ctrl+F for search.
 // @author       You
 // @match        *://gemini.google.com/*
 // @grant        none
@@ -15,6 +15,7 @@
     const SELECTORS = {
         EDITOR: 'div.ql-editor[contenteditable="true"]',
         NEW_CHAT_BUTTON: 'button[aria-label="New chat"]',
+        SEARCH_ICON: 'mat-icon[fonticon="search"]',
     };
 
     /**
@@ -27,6 +28,20 @@
             editor.focus();
         } else {
             console.log('Editor not found on the page.');
+        }
+    }
+
+    /**
+     * Triggers search by clicking the search icon or navigating to search page as fallback.
+     */
+    function triggerSearch() {
+        const searchIcon = document.querySelector(SELECTORS.SEARCH_ICON);
+        if (searchIcon) {
+            console.log('Search icon found, clicking it.');
+            searchIcon.click();
+        } else {
+            console.log('Search icon not found, navigating to search page as fallback.');
+            window.location.href = 'https://gemini.google.com/search';
         }
     }
 
@@ -47,10 +62,17 @@
             }
         }
 
-        // focus input shortcuts.
-        if (event.ctrlKey && (event.key === 'f' || event.key === 'i')) {
+        // search shortcut.
+        if (event.ctrlKey && event.key === 'f') {
             event.preventDefault();
-            console.log(`Ctrl+${event.key} detected. Focusing editor.`);
+            console.log('Ctrl+F detected. Triggering search.');
+            triggerSearch();
+        }
+
+        // focus input shortcut.
+        if (event.ctrlKey && event.key === 'i') {
+            event.preventDefault();
+            console.log('Ctrl+I detected. Focusing editor.');
             setFocusToEditor();
         }
     }
