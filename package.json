@@ -4,7 +4,9 @@
   "description": "What is a browser userscript? [Wikipedia article](https://en.wikipedia.org/wiki/Userscript)",
   "main": "browser-mods.user.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "hw:map": "node scripts/hostelworld-map-new-tabs.js",
+    "playwright:install": "npx playwright install chromium"
   },
   "repository": {
     "type": "git",
@@ -22,6 +24,7 @@
   },
   "homepage": "https://github.com/hamidzr/user-scripts#readme",
   "devDependencies": {
+    "playwright": "^1.54.2",
     "prettier": "^2.7.1"
   }
 }
