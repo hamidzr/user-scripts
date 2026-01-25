@@ -24,7 +24,7 @@
   },
   "homepage": "https://github.com/hamidzr/user-scripts#readme",
   "devDependencies": {
-    "playwright": "^1.54.2",
+    "playwright": "^1.55.1",
     "prettier": "^2.7.1"
   }
 }
