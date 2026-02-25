@@ -9,7 +9,7 @@
 // @run-at document-idle
 // ==/UserScript==
 
-'use strict';
+"use strict";
 
 // https://www.google.com/url?q=https://zoom.us/j/97004757505&sa=D&ust=1591838079140000&usg=AOvVaw11Q_StishuRddQCQrJcLt1
 
@@ -20,11 +20,11 @@ const selectors = {
 const buildZoomHref = (meetingNumber) =>
   `zoommtg://zoom.us/join?action=join&confno=${meetingNumber}`;
 
-const meetingNumberRe = new RegExp('(?<=zoom.us/j/)d+', 'i');
+const meetingNumberRe = new RegExp("(?<=zoom.us/j/)d+", "i");
 
 const main = () => {
   const zooms = Array.from(document.querySelectorAll(selectors.zoomLinks));
-  console.log('found zooms', zooms);
+  console.log("found zooms", zooms);
   zooms.forEach((zoomA) => {
     const meetingNumber = zoomA.href.match(meetingNumberRe);
     if (meetingNumber) zoomA.href = buildZoomHref(meetingNumber);
