@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name                 eBay Sponsored Listings Highlighter
-// @author               Zare
+// @author               AZ
 // @description          colors eBay's native Sponsored labels red
 // @grant                none
 // @match                https://www.ebay.com/*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @version              1.9.0
 // ==/UserScript==

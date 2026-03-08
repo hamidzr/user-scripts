@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name                 Google Feeling Lucky Redirect
-// @author               Zare
+// @author               AZ
 // @description          automatically redirects to the first result when a "Feeling Lucky" search link is opened
 // @grant                none
 // @match                https://*.google.com/search?q=*
 // @match                https://*.google.com/url?q=*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @version              0.1.0
 // ==/UserScript==

@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name                 Teams Utils
-// @author               Zare
+// @author               AZ
 // @description          auto-join meetings, mute, and capture transcripts in Microsoft Teams
 // @grant                none
 // @match                https://teams.microsoft.com/*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @version              0.1.0
 // ==/UserScript==

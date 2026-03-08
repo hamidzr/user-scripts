@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name                 GitHub Status Checks
-// @author               Zare
+// @author               AZ
 // @description          reorder GitHub PR status checks so failures appear first
 // @grant                none
 // @match                https://github.com/*/*/pull/*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @version              0.1.1
 // ==/UserScript==

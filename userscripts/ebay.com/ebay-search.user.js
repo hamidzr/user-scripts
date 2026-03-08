@@ -1,13 +1,13 @@
 // ==UserScript==
 // @name                 eBay Search Enhancer
-// @author               Zare
+// @author               AZ
 // @description          preserve filters on search, add reset button, highlight keywords including negative keywords in red
 // @grant                none
 // @match                https://www.ebay.com/*
 // @match                https://www.ebay.com.au/*
 // @match                https://www.ebay.co.uk/*
 // @match                https://www.ebay.ca/*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-end
 // @version              1.3.0
 // ==/UserScript==

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name                 Amazon Review Score Color Borders
-// @author               Zare
+// @author               AZ
 // @description          Wilson lower-bound + page-relative scoring with color-coded borders
 // @grant                none
 // @match                https://www.amazon.com/s*
@@ -8,7 +8,7 @@
 // @match                https://www.amazon.com/*/b/*
 // @match                https://www.amazon.com/b/*
 // @match                https://www.amazon.com/gp/bestsellers/*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @version              2.9.0
 // ==/UserScript==

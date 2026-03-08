@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name                 Zoom link upgrader
-// @author               Zare
+// @author               AZ
 // @description          swap http Zoom meeting links to zoommtg:// links
 // @grant                none
 // @match                https://calendar.google.com/*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @version              0.1.0
 // ==/UserScript==

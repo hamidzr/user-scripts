@@ -1,12 +1,13 @@
 // ==UserScript==
 // @name                 GitHub PullRequests Plus
-// @author               Zare
+// @author               AZ
 // @description          display diff stats next to each pull request in the list view
 // @grant                none
+// @match                https://github.com/*/*/pulls
 // @match                https://github.com/*/*/pulls/*
-// @namespace            hamidza.re
+// @namespace            https://latentbyte.com/products
 // @run-at               document-idle
-// @version              0.3.2
+// @version              0.4.0
 // ==/UserScript==
 
 'use strict';
@@ -40,21 +41,75 @@
       }, timeoutMs);
     });
   };
+  var injectCSS = (id, css) => {
+    let style = document.getElementById(id);
+    if (style) {
+      style.textContent = css;
+      return style;
+    }
+    style = document.createElement("style");
+    style.id = id;
+    style.textContent = css;
+    document.head.appendChild(style);
+    return style;
+  };
 
   // src/github.com/github-plus.user.ts
-  var parser = new DOMParser;
-  var ghPlusSels = {
-    prATags: 'div.js-issue-row a[href*="/pull/"].js-navigation-open'
+  var STYLE_ID = "gh-plus-styles";
+  var CSS = `
+  .gh-plus-diffstat {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    margin-left: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    vertical-align: middle;
+  }
+  .gh-plus-additions { color: var(--fgColor-success, #1a7f37); }
+  .gh-plus-deletions { color: var(--fgColor-danger, #d1242f); }
+`;
+  var MARKER = "data-gh-plus-diffstat";
+  var sels = {
+    prLinks: 'div.js-issue-row a[href*="/pull/"].js-navigation-open'
+  };
+  var fetchDiffStats = async (prUrl) => {
+    const resp = await fetch(`${prUrl}/files`, {
+      headers: { Accept: "application/json", "X-Requested-With": "XMLHttpRequest" }
+    });
+    if (!resp.ok)
+      throw new Error(`failed to fetch ${prUrl}/files: ${resp.status}`);
+    const json = await resp.json();
+    const summaries = json.payload.pullRequestsChangesRoute.diffSummaries;
+    let additions = 0;
+    let deletions = 0;
+    for (const f of summaries) {
+      additions += f.linesAdded;
+      deletions += f.linesDeleted;
+    }
+    return { additions, deletions };
+  };
+  var formatNum = (n) => n.toLocaleString();
+  var createBadge = (additions, deletions) => {
+    const badge = document.createElement("span");
+    badge.className = "gh-plus-diffstat";
+    badge.innerHTML = `<span class="gh-plus-additions">+${formatNum(additions)}</span>` + `<span class="gh-plus-deletions">-${formatNum(deletions)}</span>`;
+    return badge;
   };
   var setupPrPage = () => {
-    document.querySelectorAll(ghPlusSels.prATags).forEach((a) => {
-      fetch(a.href).then((resp) => resp.text()).then((html) => {
-        const pullDoc = parser.parseFromString(html, "text/html");
-        const diffStat = pullDoc.getElementById("diffstat");
-        if (diffStat)
-          a.append(diffStat);
+    document.querySelectorAll(sels.prLinks).forEach((a) => {
+      if (a.hasAttribute(MARKER))
+        return;
+      a.setAttribute(MARKER, "");
+      fetchDiffStats(a.href).then(({ additions, deletions }) => {
+        a.append(createBadge(additions, deletions));
       }).catch(console.error);
     });
   };
-  waitForEl(ghPlusSels.prATags, 6000).then(setupPrPage).catch(() => {});
+  var main = async () => {
+    injectCSS(STYLE_ID, CSS);
+    await waitForEl(sels.prLinks, 6000).catch(() => null);
+    setupPrPage();
+  };
+  main();
 })();

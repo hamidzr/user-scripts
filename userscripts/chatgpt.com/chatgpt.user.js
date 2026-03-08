@@ -1,27 +1,19 @@
 // ==UserScript==
-// @name                 Gemini Auto-focus
+// @name                 ChatGPT Shortcuts
 // @author               AZ
-// @description          focus the editor and map Ctrl+N / Ctrl+F to Gemini actions
+// @description          map Ctrl+N and Ctrl+F to ChatGPT actions
 // @grant                none
-// @match                https://gemini.google.com/*
+// @match                https://chatgpt.com/*
+// @match                https://chat.openai.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
-// @version              1.2.0
+// @version              1.1.0
 // ==/UserScript==
 
 'use strict';
 (() => {
 
   // src/lib/dom.ts
-  var focusEnd = (el) => {
-    el.focus();
-    const range = document.createRange();
-    const sel = window.getSelection();
-    range.selectNodeContents(el);
-    range.collapse(false);
-    sel?.removeAllRanges();
-    sel?.addRange(range);
-  };
   var simClick = (el) => {
     el.click();
     el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
@@ -54,27 +46,24 @@
     bindShortcutToClick(getTarget, { key: "n", ctrlKey: true });
   };
 
-  // src/gemini.google.com/gemini.user.ts
-  var EDITOR_SEL = 'div.ql-editor[contenteditable="true"]';
-  var NEW_CHAT_SEL = 'a[aria-label="New chat"]';
-  var SEARCH_SEL = 'button[aria-label="Search"]';
-  var focusEditor = () => {
-    const editor = document.querySelector(EDITOR_SEL);
-    if (!editor || document.activeElement === editor)
-      return;
-    focusEnd(editor);
-  };
+  // src/chatgpt.com/chatgpt.user.ts
   var getNewChatLink = () => {
-    return document.querySelector(NEW_CHAT_SEL);
+    const links = Array.from(document.querySelectorAll("a"));
+    return links.find((link) => {
+      const text = link.textContent?.trim() ?? "";
+      return text.startsWith("New chat");
+    }) ?? null;
   };
-  var getSearchButton = () => {
-    return document.querySelector(SEARCH_SEL);
+  var getSearchChatsButton = () => {
+    const nodes = Array.from(document.querySelectorAll("div"));
+    return nodes.find((node) => {
+      const text = node.textContent?.trim() ?? "";
+      return text === "Search chats⌘K";
+    }) ?? null;
   };
-  window.addEventListener("focus", focusEditor);
-  bindCtrlNToClick(getNewChatLink);
-  bindShortcutToClick(getSearchButton, { key: "f", ctrlKey: true });
   var main = () => {
-    focusEditor();
+    bindCtrlNToClick(getNewChatLink);
+    bindShortcutToClick(getSearchChatsButton, { key: "f", ctrlKey: true });
   };
   main();
 })();
