@@ -2,10 +2,12 @@
 // @name                 Zoom link upgrader
 // @author               AZ
 // @description          swap http Zoom meeting links to zoommtg:// links
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/calendar.google.com/zoom-links.user.js
 // @grant                none
 // @match                https://calendar.google.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/calendar.google.com/zoom-links.user.js
 // @version              0.1.0
 // ==/UserScript==
 

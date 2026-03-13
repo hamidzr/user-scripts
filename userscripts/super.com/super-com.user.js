@@ -2,10 +2,12 @@
 // @name                 Super.com Enhancer
 // @author               AZ
 // @description          map pins show total price, list cards bold total, hotel detail adds search buttons
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
 // @grant                none
 // @match                https://www.super.com/travel/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
 // @version              1.0.0
 // ==/UserScript==
 

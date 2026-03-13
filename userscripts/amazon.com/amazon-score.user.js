@@ -2,6 +2,7 @@
 // @name                 Amazon Review Score Color Borders
 // @author               AZ
 // @description          Wilson lower-bound + page-relative scoring with color-coded borders
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/amazon.com/amazon-score.user.js
 // @grant                none
 // @match                https://www.amazon.com/s*
 // @match                https://www.amazon.com/*/s*
@@ -10,6 +11,7 @@
 // @match                https://www.amazon.com/gp/bestsellers/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/amazon.com/amazon-score.user.js
 // @version              2.9.0
 // ==/UserScript==
 

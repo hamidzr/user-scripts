@@ -2,11 +2,13 @@
 // @name                 Monarch Bulk Select
 // @author               AZ
 // @description          shift-click transaction checkboxes in Monarch to select a range
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
 // @grant                none
 // @match                https://app.monarch.com/*
 // @match                https://app.monarchmoney.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
 // @version              1.0.0
 // ==/UserScript==
 

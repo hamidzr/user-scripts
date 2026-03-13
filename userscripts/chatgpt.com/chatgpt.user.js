@@ -2,11 +2,13 @@
 // @name                 ChatGPT Shortcuts
 // @author               AZ
 // @description          map Ctrl+N and Ctrl+F to ChatGPT actions
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/chatgpt.com/chatgpt.user.js
 // @grant                none
 // @match                https://chatgpt.com/*
 // @match                https://chat.openai.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/chatgpt.com/chatgpt.user.js
 // @version              1.1.0
 // ==/UserScript==
 

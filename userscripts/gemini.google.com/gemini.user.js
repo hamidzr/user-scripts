@@ -2,10 +2,12 @@
 // @name                 Gemini Auto-focus
 // @author               AZ
 // @description          focus the editor and map Ctrl+N / Ctrl+F to Gemini actions
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
 // @grant                none
 // @match                https://gemini.google.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
 // @version              1.2.0
 // ==/UserScript==
 

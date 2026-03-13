@@ -2,10 +2,12 @@
 // @name                 Google Meet - Auto Mute on Join
 // @author               AZ
 // @description          automatically disables microphone and camera on the Google Meet join screen
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/meet.google.com/google-meet-auto-mute.user.js
 // @grant                none
 // @match                https://meet.google.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/meet.google.com/google-meet-auto-mute.user.js
 // @version              1.1.0
 // ==/UserScript==
 

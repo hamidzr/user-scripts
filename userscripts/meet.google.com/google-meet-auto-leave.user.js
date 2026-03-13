@@ -2,10 +2,12 @@
 // @name                 Google Meet - Auto Leave on Empty
 // @author               AZ
 // @description          detects when participants drop and prompts to leave with a countdown
+// @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/meet.google.com/google-meet-auto-leave.user.js
 // @grant                none
 // @match                https://meet.google.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
+// @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/meet.google.com/google-meet-auto-leave.user.js
 // @version              1.1.0
 // ==/UserScript==
 
