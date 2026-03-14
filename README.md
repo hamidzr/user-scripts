@@ -21,9 +21,10 @@ To install a script:
 3. Open the file's raw GitHub URL, then allow the userscript manager to install
    it.
 
-## Active userscripts
+## Featured userscripts
 
-These are the currently published scripts under [`userscripts/`](./userscripts/).
+These are the currently published scripts under [`userscripts/`](./userscripts/) set that directory for the full list and possibly screenshots or screen recordings.
+
 
 | Script                                                                                           | Site                 | Description                                                                     | Features                                                                                                       |
 | ------------------------------------------------------------------------------------------------ | -------------------- | ------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
