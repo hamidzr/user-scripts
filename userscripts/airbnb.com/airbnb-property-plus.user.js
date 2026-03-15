@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-property-plus.user.js
-// @version              0.4.0
+// @version              0.5.1
 // ==/UserScript==
 
 'use strict';
@@ -31,11 +31,15 @@
   // src/airbnb.com/airbnb-property-plus.user.ts
   var STYLE_ID = "ab-property-plus-style";
   var QUICK_ACTIONS_ID = "ab-property-plus-actions";
+  var QUICK_ACTIONS_HANDLE_ID = "ab-property-plus-actions-handle";
+  var MAP_PANEL_ID = "ab-property-plus-map-panel";
+  var MAP_PANEL_HANDLE_ID = "ab-property-plus-map-handle";
   var TEMPLATE_BAR_ID = "ab-property-plus-templates";
   var TEMPLATE_EDITOR_ID = "ab-property-plus-template-editor";
   var NIGHTLY_INLINE_ID = "ab-property-plus-nightly-inline";
   var REVIEWS_COPY_BTN_ID = "ab-property-plus-copy-reviews";
   var TEMPLATES_KEY = "ab-property-plus-message-templates-v1";
+  var FLOATING_POS_KEY = "ab-property-plus-floating-pos-v1";
   var DEFAULT_TEMPLATES = [
     {
       id: "internet-details",
@@ -59,6 +63,29 @@
     backdrop-filter: blur(6px);
   }
 
+  #${QUICK_ACTIONS_ID}.is-dragging,
+  #${MAP_PANEL_ID}.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  #${QUICK_ACTIONS_ID} .ab-property-plus-drag-handle,
+  #${MAP_PANEL_ID} .ab-property-plus-drag-handle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 34px;
+    min-width: 34px;
+    height: 34px;
+    border: 1px dashed rgba(34, 34, 34, 0.18);
+    border-radius: 999px;
+    background: #fff;
+    color: #6b6b6b;
+    font-size: 15px;
+    line-height: 1;
+    cursor: grab;
+  }
+
   #${QUICK_ACTIONS_ID} button {
     border: 1px solid rgba(34, 34, 34, 0.2);
     border-radius: 999px;
@@ -77,6 +104,89 @@
   #${QUICK_ACTIONS_ID} button:disabled {
     opacity: 0.4;
     cursor: default;
+  }
+
+  #${MAP_PANEL_ID} {
+    position: fixed;
+    top: 140px;
+    right: 20px;
+    z-index: 9998;
+    width: min(360px, calc(100vw - 24px));
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.97);
+    border: 1px solid rgba(34, 34, 34, 0.12);
+    border-radius: 20px;
+    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16);
+    backdrop-filter: blur(6px);
+  }
+
+  #${MAP_PANEL_ID} .ab-property-plus-map-topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #${MAP_PANEL_ID} .ab-property-plus-map-heading {
+    min-width: 0;
+    flex: 1;
+  }
+
+  #${MAP_PANEL_ID} .ab-property-plus-map-kicker {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #717171;
+  }
+
+  #${MAP_PANEL_ID} .ab-property-plus-map-label {
+    margin-top: 2px;
+    font-size: 14px;
+    font-weight: 700;
+    color: #222;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  #${MAP_PANEL_ID} .ab-property-plus-map-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  #${MAP_PANEL_ID} .ab-property-plus-map-actions button,
+  #${MAP_PANEL_ID} .ab-property-plus-map-actions a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    border: 1px solid rgba(34, 34, 34, 0.14);
+    border-radius: 999px;
+    background: #fff;
+    color: #222;
+    font-size: 12px;
+    font-weight: 700;
+    line-height: 1;
+    text-decoration: none;
+    padding: 0 12px;
+    cursor: pointer;
+  }
+
+  #${MAP_PANEL_ID} iframe {
+    width: 100%;
+    height: 240px;
+    border: 0;
+    border-radius: 14px;
+    background: #f1f1f1;
+  }
+
+  #${MAP_PANEL_ID} .ab-property-plus-map-meta {
+    font-size: 12px;
+    color: #6b6b6b;
   }
 
   #${TEMPLATE_BAR_ID} {
@@ -197,6 +307,14 @@
       border-radius: 16px;
     }
 
+    #${MAP_PANEL_ID} {
+      right: 12px;
+      left: 12px;
+      top: auto;
+      bottom: 84px;
+      width: auto;
+    }
+
     #${TEMPLATE_BAR_ID} { max-width: 100%; }
   }
 `;
@@ -210,6 +328,9 @@
   };
   var qText = (el) => {
     return (el.textContent ?? "").replace(/\s+/g, " ").trim();
+  };
+  var escapeRegExp = (value) => {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   };
   var qInnerLines = (el) => {
     const raw = (el.innerText || qText(el)).split(/\n+/g);
@@ -227,6 +348,81 @@
   var sleep = (ms) => {
     return new Promise((resolve) => {
       window.setTimeout(resolve, ms);
+    });
+  };
+  var loadFloatingPositions = () => {
+    try {
+      const raw = localStorage.getItem(FLOATING_POS_KEY);
+      if (!raw)
+        return {};
+      return JSON.parse(raw);
+    } catch (_e) {
+      return {};
+    }
+  };
+  var saveFloatingPosition = (key, value) => {
+    try {
+      const next = loadFloatingPositions();
+      next[key] = value;
+      localStorage.setItem(FLOATING_POS_KEY, JSON.stringify(next));
+    } catch (_e) {}
+  };
+  var clamp = (value, min, max) => {
+    return Math.min(Math.max(value, min), max);
+  };
+  var applySavedFloatingPosition = (key, el) => {
+    const saved = loadFloatingPositions()[key];
+    if (!saved)
+      return;
+    const maxLeft = Math.max(8, window.innerWidth - el.offsetWidth - 8);
+    const maxTop = Math.max(8, window.innerHeight - el.offsetHeight - 8);
+    el.style.left = `${clamp(saved.left, 8, maxLeft)}px`;
+    el.style.top = `${clamp(saved.top, 8, maxTop)}px`;
+    el.style.right = "auto";
+    el.style.bottom = "auto";
+  };
+  var makeFloatingDraggable = (key, el, handle) => {
+    if (!handle || handle.dataset.dragBound === "true") {
+      applySavedFloatingPosition(key, el);
+      return;
+    }
+    handle.dataset.dragBound = "true";
+    applySavedFloatingPosition(key, el);
+    handle.addEventListener("pointerdown", (event) => {
+      if (event.button !== 0)
+        return;
+      event.preventDefault();
+      const rect = el.getBoundingClientRect();
+      const offsetX = event.clientX - rect.left;
+      const offsetY = event.clientY - rect.top;
+      el.classList.add("is-dragging");
+      try {
+        handle.setPointerCapture(event.pointerId);
+      } catch (_e) {}
+      const onMove = (moveEvent) => {
+        const nextLeft = clamp(moveEvent.clientX - offsetX, 8, window.innerWidth - rect.width - 8);
+        const nextTop = clamp(moveEvent.clientY - offsetY, 8, window.innerHeight - rect.height - 8);
+        el.style.left = `${nextLeft}px`;
+        el.style.top = `${nextTop}px`;
+        el.style.right = "auto";
+        el.style.bottom = "auto";
+      };
+      const finish = () => {
+        el.classList.remove("is-dragging");
+        handle.removeEventListener("pointermove", onMove);
+        handle.removeEventListener("pointerup", finish);
+        handle.removeEventListener("pointercancel", finish);
+        const current = el.getBoundingClientRect();
+        saveFloatingPosition(key, {
+          top: current.top,
+          left: current.left,
+          right: null,
+          bottom: null
+        });
+      };
+      handle.addEventListener("pointermove", onMove);
+      handle.addEventListener("pointerup", finish);
+      handle.addEventListener("pointercancel", finish);
     });
   };
   var triggerClick = (el) => {
@@ -257,22 +453,107 @@
     }
     return null;
   };
+  var cachedListingMapPath = "";
+  var cachedListingMapData = null;
+  var extractJsonScriptValue = (text, key) => {
+    const pattern = new RegExp(`"${escapeRegExp(key)}":"([^"]+)"`);
+    return text.match(pattern)?.[1] ?? null;
+  };
+  var getGoogleMapsUrl = (mapData) => {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${mapData.lat},${mapData.lng}`)}`;
+  };
+  var getGoogleEmbedUrl = (mapData) => {
+    return `https://www.google.com/maps?q=${encodeURIComponent(`${mapData.lat},${mapData.lng}`)}&z=14&output=embed`;
+  };
+  var parseListingMapData = () => {
+    const scripts = Array.from(document.querySelectorAll("script"));
+    let fallback = null;
+    for (const script of scripts) {
+      const text = script.textContent ?? "";
+      if (!text)
+        continue;
+      const isLocationSection = /"pluginPointId":"LOCATION_DEFAULT"/.test(text) || /"title":"Where you’ll be"/.test(text) || /"title":"Where you'll be"/.test(text);
+      const latLngMatch = text.match(/"lat":(-?\d+(?:\.\d+)?),"lng":(-?\d+(?:\.\d+)?)/);
+      if (latLngMatch && isLocationSection) {
+        const lat = Number.parseFloat(latLngMatch[1]);
+        const lng = Number.parseFloat(latLngMatch[2]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng))
+          continue;
+        const label = extractJsonScriptValue(text, "subtitle") || extractJsonScriptValue(text, "title") || "Listing location";
+        const markerType = extractJsonScriptValue(text, "mapMarkerType");
+        return {
+          lat,
+          lng,
+          label,
+          isApproximate: markerType === "APPROX"
+        };
+      }
+      if (!fallback && latLngMatch) {
+        const lat = Number.parseFloat(latLngMatch[1]);
+        const lng = Number.parseFloat(latLngMatch[2]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng))
+          continue;
+        const label = extractJsonScriptValue(text, "subtitle") || extractJsonScriptValue(text, "title") || "Listing location";
+        const markerType = extractJsonScriptValue(text, "mapMarkerType");
+        fallback = {
+          lat,
+          lng,
+          label,
+          isApproximate: markerType !== "EXACT"
+        };
+      }
+      const schemaMatch = text.match(/"latitude":(-?\d+(?:\.\d+)?),"longitude":(-?\d+(?:\.\d+)?)/);
+      if (!fallback && schemaMatch) {
+        const lat = Number.parseFloat(schemaMatch[1]);
+        const lng = Number.parseFloat(schemaMatch[2]);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng))
+          continue;
+        const locality = text.match(/"addressLocality":"([^"]+)"/)?.[1] || "Listing location";
+        fallback = {
+          lat,
+          lng,
+          label: locality,
+          isApproximate: true
+        };
+      }
+    }
+    return fallback;
+  };
+  var getListingMapData = () => {
+    const key = `${window.location.pathname}${window.location.search}`;
+    if (cachedListingMapPath === key)
+      return cachedListingMapData;
+    cachedListingMapPath = key;
+    cachedListingMapData = parseListingMapData();
+    return cachedListingMapData;
+  };
   var ensureQuickActions = () => {
     let actions = document.getElementById(QUICK_ACTIONS_ID);
     if (!actions) {
       actions = document.createElement("div");
       actions.id = QUICK_ACTIONS_ID;
-      actions.innerHTML = '<button data-action="message">Message host</button>' + '<button data-action="reviews">Show all reviews</button>' + '<button data-action="reviews-search">Search reviews</button>' + '<button data-action="reviews-copy">Copy reviews</button>';
+      actions.innerHTML = `<button id="${QUICK_ACTIONS_HANDLE_ID}" class="ab-property-plus-drag-handle" type="button" aria-label="Move quick actions" title="Move quick actions">::</button>` + '<button data-action="map">Open map</button>' + '<button data-action="message">Message host</button>' + '<button data-action="reviews">Show all reviews</button>' + '<button data-action="reviews-search">Search reviews</button>' + '<button data-action="reviews-copy">Copy reviews</button>';
       document.body.appendChild(actions);
     }
+    const mapBtn = actions.querySelector('button[data-action="map"]');
+    const handle = actions.querySelector(`#${QUICK_ACTIONS_HANDLE_ID}`);
     const messageBtn = actions.querySelector('button[data-action="message"]');
     const reviewsBtn = actions.querySelector('button[data-action="reviews"]');
     const reviewsSearchBtn = actions.querySelector('button[data-action="reviews-search"]');
     const reviewsCopyBtn = actions.querySelector('button[data-action="reviews-copy"]');
-    if (!messageBtn || !reviewsBtn || !reviewsSearchBtn || !reviewsCopyBtn)
+    if (!mapBtn || !messageBtn || !reviewsBtn || !reviewsSearchBtn || !reviewsCopyBtn)
       return;
+    makeFloatingDraggable("actions", actions, handle);
+    const mapData = getListingMapData();
+    mapBtn.disabled = !mapData;
     messageBtn.disabled = false;
     reviewsBtn.disabled = false;
+    mapBtn.onclick = () => {
+      const current = getListingMapData();
+      if (!current)
+        return;
+      window.open(getGoogleMapsUrl(current), "_blank", "noopener,noreferrer");
+    };
     messageBtn.onclick = () => {
       const target = findClickableByText(/^(message|contact)\s+host/i);
       if (target)
@@ -331,6 +612,63 @@
       }
       reviewsCopyBtn.disabled = false;
     };
+  };
+  var ensureMapPanel = () => {
+    const mapData = getListingMapData();
+    let panel = document.getElementById(MAP_PANEL_ID);
+    if (!mapData) {
+      panel?.remove();
+      return;
+    }
+    if (!panel) {
+      panel = document.createElement("div");
+      panel.id = MAP_PANEL_ID;
+      document.body.appendChild(panel);
+    }
+    const approxLabel = mapData.isApproximate ? "Approximate area from Airbnb map" : "Exact map pin";
+    if (!panel.dataset.initialized) {
+      panel.innerHTML = '<div class="ab-property-plus-map-topbar">' + `<button id="${MAP_PANEL_HANDLE_ID}" class="ab-property-plus-drag-handle" type="button" aria-label="Move map panel" title="Move map panel">::</button>` + '<div class="ab-property-plus-map-heading">' + '<div class="ab-property-plus-map-kicker"></div>' + '<div class="ab-property-plus-map-label"></div>' + "</div>" + "</div>" + '<div class="ab-property-plus-map-actions">' + '<a data-action="open-google-maps" target="_blank" rel="noreferrer noopener">Google Maps</a>' + '<button type="button" data-action="copy-coords"></button>' + "</div>" + '<iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Listing map preview"></iframe>' + '<div class="ab-property-plus-map-meta"></div>';
+      panel.dataset.initialized = "true";
+    }
+    const handle = panel.querySelector(`#${MAP_PANEL_HANDLE_ID}`);
+    const kicker = panel.querySelector(".ab-property-plus-map-kicker");
+    const label = panel.querySelector(".ab-property-plus-map-label");
+    const googleMapsLink = panel.querySelector('a[data-action="open-google-maps"]');
+    const copyBtn = panel.querySelector('button[data-action="copy-coords"]');
+    const iframe = panel.querySelector("iframe");
+    const meta = panel.querySelector(".ab-property-plus-map-meta");
+    makeFloatingDraggable("map", panel, handle);
+    const coordsText = `${mapData.lat.toFixed(5)}, ${mapData.lng.toFixed(5)}`;
+    const googleMapsUrl = getGoogleMapsUrl(mapData);
+    const embedUrl = getGoogleEmbedUrl(mapData);
+    if (kicker)
+      kicker.textContent = approxLabel;
+    if (label)
+      label.textContent = mapData.label;
+    if (googleMapsLink && googleMapsLink.href !== googleMapsUrl)
+      googleMapsLink.href = googleMapsUrl;
+    if (meta)
+      meta.textContent = coordsText;
+    if (iframe && iframe.getAttribute("src") !== embedUrl)
+      iframe.src = embedUrl;
+    if (copyBtn) {
+      const defaultCopyLabel = `Copy ${coordsText}`;
+      if (!copyBtn.disabled)
+        copyBtn.textContent = defaultCopyLabel;
+      copyBtn.onclick = async () => {
+        copyBtn.disabled = true;
+        const text = `${mapData.lat.toFixed(6)}, ${mapData.lng.toFixed(6)}`;
+        await copyTextWithFallback(text, "Copy listing coordinates");
+        copyBtn.textContent = "Copied";
+        window.setTimeout(() => {
+          const current = document.getElementById(MAP_PANEL_ID);
+          if (current?.contains(copyBtn)) {
+            copyBtn.disabled = false;
+            copyBtn.textContent = defaultCopyLabel;
+          }
+        }, 1500);
+      };
+    }
   };
   var parseCurrency = (amount, symbol) => {
     const currency = symbol === "EUR" ? "EUR" : symbol === "GBP" ? "GBP" : "USD";
@@ -533,15 +871,57 @@
     }
     return "";
   };
+  var collectTextValues = (value, out) => {
+    if (typeof value === "string") {
+      const text = value.replace(/\s+/g, " ").trim();
+      if (text)
+        out.push(text);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => collectTextValues(item, out));
+      return;
+    }
+    if (value && typeof value === "object") {
+      Object.values(value).forEach((item) => collectTextValues(item, out));
+    }
+  };
+  var dedupeLines = (lines) => {
+    const seen = new Set;
+    const result = [];
+    for (const line of lines) {
+      const key = line.toLowerCase();
+      if (seen.has(key))
+        continue;
+      seen.add(key);
+      result.push(line);
+    }
+    return result;
+  };
+  var extractApiReviewBody = (review) => {
+    const candidates = [
+      review.localizedCommentV2,
+      review.localizedReview,
+      review.comments,
+      review.comment,
+      review.review,
+      review.translatedComment
+    ];
+    const chunks = [];
+    candidates.forEach((item) => collectTextValues(item, chunks));
+    const normalized = dedupeLines(chunks).filter((line) => !/^(show more|read more|translation|translated)$/i.test(line)).join(" ").replace(/\s+/g, " ").trim();
+    if (normalized)
+      return normalized;
+    const fallbackRaw = review.localizedCommentV2 ?? review.localizedReview ?? review.comments;
+    return toTextValue(fallbackRaw).replace(/\s+/g, " ").trim() || "n/a";
+  };
   var mapApiReview = (review) => {
-    const bodyRaw = review.localizedCommentV2 ?? review.localizedReview ?? review.comments;
-    const body = toTextValue(bodyRaw).replace(/\s+/g, " ").trim() || "n/a";
     return {
       author: review.reviewer?.firstName?.trim() || "Unknown",
       location: review.localizedReviewerLocation?.trim() || "n/a",
       date: review.localizedDate?.trim() || "n/a",
       stars: parseRating(review),
-      body
+      body: extractApiReviewBody(review)
     };
   };
   var loadAllReviewsFromApi = async () => {
@@ -716,7 +1096,7 @@
         return false;
       if (/(show more|read more|translation|translated)/i.test(line))
         return false;
-      return line.length > 20;
+      return line.length > 2;
     });
     return content.join(" ").trim();
   };
@@ -1016,6 +1396,7 @@ Thanks!`;
   };
   var run = () => {
     ensureQuickActions();
+    ensureMapPanel();
     ensureTemplateToolbar();
     ensureNightlyRateHint();
     ensureReviewsCopyButton();
@@ -1032,11 +1413,15 @@ Thanks!`;
     const onNavigate = () => setTimeout(run, 300);
     const pushState = history.pushState.bind(history);
     history.pushState = (...args) => {
+      cachedListingMapPath = "";
+      cachedListingMapData = null;
       pushState(...args);
       onNavigate();
     };
     const replaceState = history.replaceState.bind(history);
     history.replaceState = (...args) => {
+      cachedListingMapPath = "";
+      cachedListingMapData = null;
       replaceState(...args);
       onNavigate();
     };

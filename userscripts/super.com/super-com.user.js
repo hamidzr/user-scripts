@@ -4,11 +4,12 @@
 // @description          map pins show total price, list cards bold total, hotel detail adds search buttons
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
 // @grant                none
+// @match                https://www.super.com/home/travel*
 // @match                https://www.super.com/travel/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
-// @version              1.0.0
+// @version              1.0.1
 // ==/UserScript==
 
 'use strict';
@@ -16,6 +17,134 @@
 
   // src/super.com/super-com.user.ts
   var priceMap = {};
+  var lookupStarted = false;
+  var norm = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  var slugify = (s) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  var getCookie = (name) => {
+    const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+    return match ? decodeURIComponent(match[1]) : "";
+  };
+  var getCountryCode = (countryName) => {
+    const target = norm(countryName);
+    if (!target)
+      return "";
+    const dn = new Intl.DisplayNames(["en"], { type: "region" });
+    for (let i = 65;i <= 90; i++) {
+      for (let j = 65;j <= 90; j++) {
+        const code = String.fromCharCode(i, j);
+        if (norm(dn.of(code) ?? "") === target)
+          return code.toLowerCase();
+      }
+    }
+    return "";
+  };
+  var queryOmnisearch = async (query) => {
+    const params = new URLSearchParams({
+      input: JSON.stringify({
+        query,
+        timestamp: new Date().toISOString(),
+        userProperties: "",
+        deviceId: getCookie("exp_uuid") || crypto.randomUUID()
+      })
+    });
+    const res = await fetch(`/snapcommerce/api/trpc/recommender.queryAddressOmnisearch?${params}`);
+    if (!res.ok)
+      throw new Error(`super omnisearch failed: ${res.status}`);
+    const data = await res.json();
+    return data.result?.data ?? [];
+  };
+  var pickLookupHotel = (items, opts) => {
+    const name = norm(opts.name);
+    const city = norm(opts.city);
+    const country = norm(opts.country);
+    const destination = norm(opts.destination);
+    let best = null;
+    let bestScore = -1;
+    items.forEach((item) => {
+      if (!item.hotel_id || item.type !== "hotel")
+        return;
+      const itemName = norm(item.name ?? "");
+      const itemCity = norm(item.city ?? "");
+      let score = 0;
+      if (name && (itemName === name || itemName.includes(name) || name.includes(itemName)))
+        score += 100;
+      if (city && (itemCity === city || itemCity.includes(city) || city.includes(itemCity)))
+        score += 40;
+      if (country && destination.includes(country))
+        score += 5;
+      if (destination && destination.includes(itemName))
+        score += 20;
+      if (destination && destination.includes(itemCity))
+        score += 10;
+      if (score > bestScore) {
+        best = item;
+        bestScore = score;
+      }
+    });
+    return { item: best, score: bestScore };
+  };
+  var pickCountryMatchedRegion = (items, city, country) => {
+    const regionItems = items.filter((item) => item.type === "region" && item.region_type === "city");
+    const cityMatches = regionItems.filter((item) => {
+      const itemName = norm(item.name ?? "");
+      const cityNorm = norm(city);
+      return itemName === cityNorm || itemName.includes(cityNorm) || cityNorm.includes(itemName);
+    });
+    const countryNorm = norm(country);
+    if (countryNorm) {
+      const countryMatch = cityMatches.find((item) => norm(item.country ?? "") === countryNorm) ?? null;
+      if (countryMatch)
+        return countryMatch;
+    }
+    return cityMatches[0] ?? null;
+  };
+  var findLookupRegion = async (query, name, city, country) => {
+    const queryItems = await queryOmnisearch(query);
+    const hotel = pickLookupHotel(queryItems, { name, city, country, destination: query });
+    if (hotel.item?.hotel_id && hotel.score >= 80)
+      return { hotel: hotel.item, region: null };
+    const directRegion = pickCountryMatchedRegion(queryItems, city, country);
+    if (directRegion)
+      return { hotel: null, region: directRegion };
+    const cityQuery = city.trim();
+    if (!cityQuery)
+      return { hotel: null, region: null };
+    const cityItems = await queryOmnisearch(cityQuery);
+    return { hotel: null, region: pickCountryMatchedRegion(cityItems, city, country) };
+  };
+  var maybeResolveHostelworldLookup = () => {
+    if (lookupStarted)
+      return;
+    if (location.pathname !== "/home/travel")
+      return;
+    const params = new URLSearchParams(location.search);
+    if (params.get("super_lookup") !== "1")
+      return;
+    const destination = params.get("destination") ?? "";
+    const query = params.get("super_query") ?? [params.get("super_name") ?? "", params.get("super_city") ?? ""].filter(Boolean).join(" ");
+    const name = params.get("super_name") ?? "";
+    const city = params.get("super_city") ?? "";
+    const country = params.get("super_country") ?? "";
+    if (!query && !destination)
+      return;
+    lookupStarted = true;
+    findLookupRegion(query || destination, name, city, country).then(({ hotel, region }) => {
+      params.delete("super_lookup");
+      params.delete("super_query");
+      params.delete("super_name");
+      params.delete("super_city");
+      params.delete("super_country");
+      if (hotel?.hotel_id) {
+        location.replace(`/travel/hotels/${hotel.hotel_id}?${params.toString()}`);
+        return;
+      }
+      const countryCode = getCountryCode(country);
+      const citySlug = slugify(region?.name ?? city);
+      if (region?.id && countryCode && citySlug) {
+        location.replace(`/travel/regions/${region.id}/cities/${countryCode}/${citySlug}-hotels?${params.toString()}`);
+      }
+    }).catch(() => {});
+  };
   var _fetch = window.fetch.bind(window);
   window.fetch = async function(...args) {
     const res = await _fetch(...args);
@@ -77,9 +206,13 @@
     maybeInjectMapButton();
   };
   if (document.body) {
+    maybeResolveHostelworldLookup();
     startObserver();
   } else {
-    document.addEventListener("DOMContentLoaded", startObserver);
+    document.addEventListener("DOMContentLoaded", () => {
+      maybeResolveHostelworldLookup();
+      startObserver();
+    });
   }
   var mapFetched = false;
   var maybeInjectMapButton = () => {

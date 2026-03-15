@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/hostelworld.com/hostelworld.user.js
-// @version              2.0.0
+// @version              2.0.3
 // ==/UserScript==
 
 'use strict';
@@ -338,6 +338,9 @@
 .hw-sb-btn-booking {
   background: #003580;
 }
+.hw-sb-btn-super {
+  background: #1f6fff;
+}
 .hw-sb-btn-tripadv {
   background: #00aa6c;
 }
@@ -360,6 +363,40 @@
       name: decodeURIComponent(m[1]).replace(/-/g, " "),
       city: decodeURIComponent(m[2]).replace(/-/g, " ")
     };
+  };
+  var escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  var getCountry = (city) => {
+    if (!city)
+      return "";
+    const text = document.body?.innerText ?? "";
+    const cityLine = text.match(new RegExp(`${escRe(city)},\\s*([^\\n]+?)\\s+View Map`));
+    if (cityLine?.[1])
+      return cityLine[1].trim();
+    const citySentence = text.match(new RegExp(`\\b${escRe(city)}\\s+([^\\n,.]+?)\\s+provides`, "i"));
+    if (citySentence?.[1])
+      return citySentence[1].trim();
+    return "";
+  };
+  var buildSuperUrl = (destination, query, name, city, country) => {
+    const params = new URLSearchParams({
+      destination,
+      super_lookup: "1",
+      super_query: query,
+      super_name: name,
+      super_city: city,
+      super_country: country,
+      num_adults: window.location.search ? new URLSearchParams(window.location.search).get("guests") || "1" : "1",
+      children: "[]",
+      expand_params: "false"
+    });
+    const urlParams = new URLSearchParams(window.location.search);
+    const from = urlParams.get("from");
+    const to = urlParams.get("to");
+    if (from)
+      params.set("checkin_at", from);
+    if (to)
+      params.set("checkout_at", to);
+    return `https://www.super.com/home/travel?${params.toString()}`;
   };
   var reviewsUrl = (propId, page, allLangs) => `https://prod.apigee.hostelworld.com/legacy-hwapi-service/2.2/properties/${propId}/reviews/` + `?sort=-date&allLanguages=${allLangs ? "true" : "false"}&page=${page}&monthCount=36&application=web`;
   var fetchPage = async (propId, page, allLangs) => {
@@ -616,7 +653,10 @@
     const { name, city } = getNameAndCity();
     if (!name)
       return;
-    const q = encodeURIComponent(`${name} ${city}`.trim());
+    const country = getCountry(city);
+    const destination = city || [name, city].filter(Boolean).join(" ");
+    const superQuery = [name, city].filter(Boolean).join(" ");
+    const q = encodeURIComponent(destination);
     const qTa = encodeURIComponent(`${name} hostel ${city}`.trim());
     const links = [
       {
@@ -636,6 +676,12 @@
         icon: "B",
         label: "Booking",
         href: `https://www.booking.com/searchresults.html?ss=${q}`
+      },
+      {
+        cls: "hw-sb-btn-super",
+        icon: "S",
+        label: "Super",
+        href: buildSuperUrl(destination, superQuery, name, city, country)
       },
       {
         cls: "hw-sb-btn-tripadv",
