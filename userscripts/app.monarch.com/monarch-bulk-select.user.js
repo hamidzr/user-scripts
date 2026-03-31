@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
-// @version              1.0.0
+// @version              1.0.1
 // ==/UserScript==
 
 'use strict';
@@ -41,6 +41,13 @@
 
   // src/app.monarch.com/monarch-bulk-select.user.ts
   var exports_monarch_bulk_select_user = {};
+
+  // src/lib/poll.ts
+  var sleep = (ms) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+  // src/app.monarch.com/monarch-bulk-select.user.ts
   var ROW_SEL = 'div[class*="TransactionsList__TransactionRowContainer"]';
   var LIST_SEL = '[data-testid="virtuoso-item-list"], [data-test-id="virtuoso-item-list"]';
   var rangeInProgress = false;
@@ -86,7 +93,6 @@
     return null;
   };
   var getMountedRangeCheckboxes = (listRoot, lo, hi) => Array.from(listRoot.querySelectorAll(`${ROW_SEL} input[type="checkbox"]`)).map((checkbox) => ({ absIndex: getAbsIndex(checkbox), checkbox })).filter((item) => item.absIndex >= lo && item.absIndex <= hi);
-  var wait = (ms) => new Promise((resolve) => window.setTimeout(resolve, ms));
   var syncRange = async (anchorState, to) => {
     const listRoot = getListRoot(to);
     const scrollRoot = getScrollRoot(to);
@@ -142,7 +148,7 @@
         if (reachedAnchor)
           break;
         scrollRoot.scrollTop = Math.max(0, scrollRoot.scrollTop + scrollDir * scrollStep);
-        await wait(80);
+        await sleep(80);
       }
     } finally {
       rangeInProgress = false;

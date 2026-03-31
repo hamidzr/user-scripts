@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/hostelworld.com/hostelworld.user.js
-// @version              2.0.3
+// @version              2.0.4
 // ==/UserScript==
 
 'use strict';
@@ -352,6 +352,13 @@
   };
 
   // src/lib/page-lifecycle.ts
+  var runWhenReady = (fn) => {
+    if (document.body) {
+      fn();
+    } else {
+      document.addEventListener("DOMContentLoaded", fn);
+    }
+  };
   var KEY = "__lbLocationChangeController__";
   var scheduleListener = (listener) => {
     const nextHref = window.location.href;
@@ -423,6 +430,10 @@
         controller.restore();
     };
   };
+
+  // src/lib/text.ts
+  var escapeHtml = (text) => String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+  var escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   // src/hostelworld.com/hostelworld.css
   var hostelworld_default = `#hw-review-search-btn {
@@ -776,15 +787,14 @@
       country: ""
     };
   };
-  var escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   var getCountry = (city) => {
     if (!city)
       return "";
     const text = document.body?.innerText ?? "";
-    const cityLine = text.match(new RegExp(`${escRe(city)},\\s*([^\\n]+?)\\s+View Map`));
+    const cityLine = text.match(new RegExp(`${escapeRegExp(city)},\\s*([^\\n]+?)\\s+View Map`));
     if (cityLine?.[1])
       return cityLine[1].trim();
-    const citySentence = text.match(new RegExp(`\\b${escRe(city)}\\s+([^\\n,.]+?)\\s+provides`, "i"));
+    const citySentence = text.match(new RegExp(`\\b${escapeRegExp(city)}\\s+([^\\n,.]+?)\\s+provides`, "i"));
     if (citySentence?.[1])
       return citySentence[1].trim();
     return "";
@@ -808,22 +818,21 @@
       return "#7a4a1a";
     return "#7a1a1a";
   };
-  var escHtml = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   var highlightText = (text, regex) => {
     if (!regex)
-      return escHtml(text);
+      return escapeHtml(text);
     const parts = [];
     let last = 0;
     let m;
     regex.lastIndex = 0;
     while ((m = regex.exec(text)) !== null) {
-      parts.push(escHtml(text.slice(last, m.index)));
-      parts.push(`<mark>${escHtml(m[0])}</mark>`);
+      parts.push(escapeHtml(text.slice(last, m.index)));
+      parts.push(`<mark>${escapeHtml(m[0])}</mark>`);
       last = m.index + m[0].length;
       if (!regex.global)
         break;
     }
-    parts.push(escHtml(text.slice(last)));
+    parts.push(escapeHtml(text.slice(last)));
     return parts.join("");
   };
   var renderCard = (rv, regex) => {
@@ -838,8 +847,8 @@
     <div class="hw-rv">
       <div class="hw-rv-meta">
         <span class="hw-rv-score" style="background:${color}">${(score / 10).toFixed(1)}</span>
-        <span class="hw-rv-nick">${escHtml(nick)}</span>
-        ${nat ? `<span class="hw-rv-nat">${escHtml(nat)}</span>` : ""}
+        <span class="hw-rv-nick">${escapeHtml(nick)}</span>
+        ${nat ? `<span class="hw-rv-nat">${escapeHtml(nat)}</span>` : ""}
         <span class="hw-rv-date">${date}</span>
       </div>
       <div class="hw-rv-text">${body}</div>
@@ -1126,9 +1135,5 @@
     }, { debounceMs: 600 });
     hwInit();
   };
-  if (document.body) {
-    hwBootstrap();
-  } else {
-    document.addEventListener("DOMContentLoaded", hwBootstrap);
-  }
+  runWhenReady(hwBootstrap);
 })();

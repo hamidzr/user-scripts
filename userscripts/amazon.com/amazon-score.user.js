@@ -156,6 +156,72 @@
     };
   };
 
+  // src/lib/store.ts
+  var LOCAL_STORAGE_ADAPTER = {
+    name: "localStorage",
+    readText: (key) => {
+      return localStorage.getItem(key);
+    },
+    writeText: (key, value) => {
+      localStorage.setItem(key, value);
+    }
+  };
+  var getAdapters = (adapters) => {
+    return adapters?.length ? adapters : [LOCAL_STORAGE_ADAPTER];
+  };
+  var reportError = (opts, error, ctx) => {
+    opts?.onError?.(error, ctx);
+  };
+  var readRawStore = (key, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        return adapter.readText(key);
+      } catch (error) {
+        reportError(opts, error, {
+          action: "read",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return null;
+  };
+  var writeTextStore = (key, value, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        adapter.writeText(key, value);
+        return true;
+      } catch (error) {
+        reportError(opts, error, {
+          action: "write",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return false;
+  };
+  var readJsonStore = (key, fallback, opts) => {
+    const raw = readRawStore(key, opts);
+    if (raw === null)
+      return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      return opts?.parse ? opts.parse(parsed) : parsed;
+    } catch (error) {
+      reportError(opts, error, { action: "parse", key });
+      return fallback;
+    }
+  };
+  var writeJsonStore = (key, value, opts) => {
+    try {
+      return writeTextStore(key, JSON.stringify(value), opts);
+    } catch (error) {
+      reportError(opts, error, { action: "stringify", key });
+      return false;
+    }
+  };
+
   // src/amazon.com/amazon-score.css
   var amazon_score_default = `.vm-score-item {
   transition: opacity 120ms ease;
@@ -246,20 +312,16 @@
     injectCSS(STYLE_ID, amazon_score_default);
   };
   function loadSettings() {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (!raw)
-        return { sortByScore: false };
-      const parsed = JSON.parse(raw);
-      return { sortByScore: Boolean(parsed.sortByScore) };
-    } catch (_e) {
-      return { sortByScore: false };
-    }
+    return readJsonStore(SETTINGS_KEY, { sortByScore: false }, {
+      parse: (value) => {
+        if (!value || typeof value !== "object")
+          return { sortByScore: false };
+        return { sortByScore: Boolean(value.sortByScore) };
+      }
+    });
   }
   var saveSettings = () => {
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch (_e) {}
+    writeJsonStore(SETTINGS_KEY, settings);
   };
   var ensureMenu = () => {
     const firstItem = getResultItems()[0];

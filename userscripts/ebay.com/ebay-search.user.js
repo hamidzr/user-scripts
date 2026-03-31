@@ -11,7 +11,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-end
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-search.user.js
-// @version              1.3.0
+// @version              1.3.1
 // ==/UserScript==
 
 'use strict';
@@ -114,12 +114,12 @@
     };
   };
 
+  // src/lib/text.ts
+  var escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
   // src/ebay.com/ebay-search.user.ts
   var hasInitialized = false;
   var highlightingApplied = false;
-  var escapeRegExp = (string) => {
-    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  };
   var init = () => {
     if (hasInitialized)
       return;

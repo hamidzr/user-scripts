@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/teams.microsoft.com/teams.user.js
-// @version              0.1.0
+// @version              0.1.1
 // ==/UserScript==
 
 'use strict';
@@ -94,7 +94,6 @@
 
   // src/teams.microsoft.com/teams.user.ts
   var sels = {
-    lines: "calling-closed-captions .ts-calling-closed-captions-words span",
     joinBtn: 'button[data-tid="joinOnWeb"]',
     joinNow: 'button[aria-label="Join now"]',
     toggleMute: '[data-cid="toggle-mute-true"]',

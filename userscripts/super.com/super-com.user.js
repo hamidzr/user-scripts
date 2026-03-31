@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
-// @version              1.0.1
+// @version              1.0.2
 // ==/UserScript==
 
 'use strict';
@@ -393,6 +393,15 @@
     return bar;
   };
 
+  // src/lib/page-lifecycle.ts
+  var runWhenReady = (fn) => {
+    if (document.body) {
+      fn();
+    } else {
+      document.addEventListener("DOMContentLoaded", fn);
+    }
+  };
+
   // src/super.com/super-com.user.ts
   var SUPER_LINKS_STYLE_ID = "sc-search-links-style";
   var SUPER_LINKS_BAR_ID = "sc-search-links-bar";
@@ -632,15 +641,10 @@
     superObserver.observe(document.body, { childList: true, subtree: true });
     runEnhancements();
   };
-  if (document.body) {
+  runWhenReady(() => {
     maybeResolveHostelworldLookup();
     startObserver();
-  } else {
-    document.addEventListener("DOMContentLoaded", () => {
-      maybeResolveHostelworldLookup();
-      startObserver();
-    });
-  }
+  });
   var mapFetched = false;
   var maybeInjectMapButton = () => {
     if (mapFetched)

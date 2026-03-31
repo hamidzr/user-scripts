@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-hotel-links.user.js
-// @version              0.1.0
+// @version              0.1.1
 // ==/UserScript==
 
 'use strict';
@@ -446,6 +446,15 @@
     return bar;
   };
 
+  // src/lib/page-lifecycle.ts
+  var runWhenReady = (fn) => {
+    if (document.body) {
+      fn();
+    } else {
+      document.addEventListener("DOMContentLoaded", fn);
+    }
+  };
+
   // src/booking.com/booking-hotel-links.helpers.ts
   var cleanText = (value) => {
     return value.replace(/\s+/g, " ").trim();
@@ -605,9 +614,5 @@
       observer.observe(document.body, { childList: true, subtree: true });
     }).catch(() => {});
   };
-  if (document.body) {
-    main();
-  } else {
-    document.addEventListener("DOMContentLoaded", main);
-  }
+  runWhenReady(main);
 })();

@@ -679,6 +679,72 @@ body.ab-agg-open {
     return Math.round(parseFloat(trimmed.replace(/[,kK]/g, "")) * multiplier);
   };
 
+  // src/lib/store.ts
+  var LOCAL_STORAGE_ADAPTER = {
+    name: "localStorage",
+    readText: (key) => {
+      return localStorage.getItem(key);
+    },
+    writeText: (key, value) => {
+      localStorage.setItem(key, value);
+    }
+  };
+  var getAdapters = (adapters) => {
+    return adapters?.length ? adapters : [LOCAL_STORAGE_ADAPTER];
+  };
+  var reportError = (opts, error, ctx) => {
+    opts?.onError?.(error, ctx);
+  };
+  var readRawStore = (key, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        return adapter.readText(key);
+      } catch (error) {
+        reportError(opts, error, {
+          action: "read",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return null;
+  };
+  var writeTextStore = (key, value, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        adapter.writeText(key, value);
+        return true;
+      } catch (error) {
+        reportError(opts, error, {
+          action: "write",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return false;
+  };
+  var readJsonStore = (key, fallback, opts) => {
+    const raw = readRawStore(key, opts);
+    if (raw === null)
+      return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      return opts?.parse ? opts.parse(parsed) : parsed;
+    } catch (error) {
+      reportError(opts, error, { action: "parse", key });
+      return fallback;
+    }
+  };
+  var writeJsonStore = (key, value, opts) => {
+    try {
+      return writeTextStore(key, JSON.stringify(value), opts);
+    } catch (error) {
+      reportError(opts, error, { action: "stringify", key });
+      return false;
+    }
+  };
+
   // src/airbnb.com/airbnb-score-helpers.ts
   var SETTINGS_KEY = "ab-score-settings-v1";
   var SORT_FIELDS = [
@@ -707,24 +773,22 @@ body.ab-agg-open {
     return VALUE_MODELS.some((model) => model.id === valueModel) ? valueModel : DEFAULT_VALUE_MODEL;
   }
   function loadSettings() {
-    try {
-      const raw = localStorage.getItem(SETTINGS_KEY);
-      if (!raw)
-        return { sortMode: "default", valueModel: DEFAULT_VALUE_MODEL };
-      const parsed = JSON.parse(raw);
-      const sortMode = parsed.sortMode || "default";
-      const valueModel = parseValueModel(parsed.valueModel);
-      const valid = sortMode === "default" || Boolean(parseSortMode(sortMode));
-      return { sortMode: valid ? sortMode : "default", valueModel };
-    } catch (_e) {
-      return { sortMode: "default", valueModel: DEFAULT_VALUE_MODEL };
-    }
+    return readJsonStore(SETTINGS_KEY, { sortMode: "default", valueModel: DEFAULT_VALUE_MODEL }, {
+      parse: (value) => {
+        if (!value || typeof value !== "object") {
+          return { sortMode: "default", valueModel: DEFAULT_VALUE_MODEL };
+        }
+        const parsed = value;
+        const sortMode = typeof parsed.sortMode === "string" ? parsed.sortMode : "default";
+        const valueModel = parseValueModel(parsed.valueModel);
+        const valid = sortMode === "default" || Boolean(parseSortMode(sortMode));
+        return { sortMode: valid ? sortMode : "default", valueModel };
+      }
+    });
   }
   var settings = loadSettings();
   function saveSettings() {
-    try {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-    } catch (_e) {}
+    writeJsonStore(SETTINGS_KEY, settings);
   }
   function parseSortMode(sortMode) {
     if (!sortMode || sortMode === "default")

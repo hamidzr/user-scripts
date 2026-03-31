@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-property-plus.user.js
-// @version              0.5.1
+// @version              0.5.2
 // ==/UserScript==
 
 'use strict';
@@ -26,6 +26,14 @@
     style.textContent = css;
     document.head.appendChild(style);
     return style;
+  };
+  var isVisible = (el) => {
+    if (!el.isConnected)
+      return false;
+    if (el.offsetParent !== null)
+      return true;
+    const style = window.getComputedStyle(el);
+    return style.display !== "none" && style.visibility !== "hidden";
   };
 
   // src/lib/dom-observe.ts
@@ -329,6 +337,69 @@
     ];
   };
 
+  // src/lib/hotel-search-ui.ts
+  var buildSignature = (links, getLinkText) => {
+    return links.map((link) => `${getLinkText(link)}:${link.href}`).join("|");
+  };
+  var renderHotelSearchBar = (opts) => {
+    const existing = document.getElementById(opts.barId);
+    const placement = opts.placement ?? "append";
+    const getLinkText = opts.getLinkText ?? ((link) => link.label);
+    if (!opts.anchor || !opts.links.length) {
+      existing?.remove();
+      return null;
+    }
+    let bar = existing;
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = opts.barId;
+    }
+    if (opts.barClassName)
+      bar.className = opts.barClassName;
+    if (opts.barAttrs) {
+      Object.entries(opts.barAttrs).forEach(([key, value]) => {
+        bar.setAttribute(key, value);
+      });
+    }
+    const signature = buildSignature(opts.links, getLinkText);
+    const expectedParent = placement === "append" ? opts.anchor : opts.anchor.parentElement;
+    const isMounted = placement === "append" ? bar.parentElement === opts.anchor : bar.previousElementSibling === opts.anchor && bar.parentElement === expectedParent;
+    if (bar.dataset.signature === signature && isMounted) {
+      return bar;
+    }
+    bar.textContent = "";
+    bar.dataset.signature = signature;
+    opts.links.forEach((link) => {
+      const a = document.createElement("a");
+      a.href = link.href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.title = link.title;
+      const linkClassName = opts.getLinkClassName?.(link);
+      if (linkClassName)
+        a.className = linkClassName;
+      if (opts.renderLinkContent) {
+        opts.renderLinkContent(link, a);
+      } else {
+        a.textContent = getLinkText(link);
+      }
+      bar.appendChild(a);
+    });
+    if (placement === "append") {
+      if (bar.parentElement !== opts.anchor)
+        opts.anchor.appendChild(bar);
+      return bar;
+    }
+    if (!opts.anchor.parentElement) {
+      bar.remove();
+      return null;
+    }
+    if (bar.previousElementSibling !== opts.anchor || bar.parentElement !== opts.anchor.parentElement) {
+      opts.anchor.parentElement.insertBefore(bar, opts.anchor.nextSibling);
+    }
+    return bar;
+  };
+
   // src/lib/page-lifecycle.ts
   var KEY = "__lbLocationChangeController__";
   var scheduleListener = (listener) => {
@@ -402,11 +473,402 @@
     };
   };
 
+  // src/lib/poll.ts
+  var sleep = (ms) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
+  // src/lib/store.ts
+  var LOCAL_STORAGE_ADAPTER = {
+    name: "localStorage",
+    readText: (key) => {
+      return localStorage.getItem(key);
+    },
+    writeText: (key, value) => {
+      localStorage.setItem(key, value);
+    }
+  };
+  var getAdapters = (adapters) => {
+    return adapters?.length ? adapters : [LOCAL_STORAGE_ADAPTER];
+  };
+  var reportError = (opts, error, ctx) => {
+    opts?.onError?.(error, ctx);
+  };
+  var readRawStore = (key, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        return adapter.readText(key);
+      } catch (error) {
+        reportError(opts, error, {
+          action: "read",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return null;
+  };
+  var readTextStore = (key, fallback, opts) => {
+    const value = readRawStore(key, opts);
+    return value === null ? fallback : value;
+  };
+  var writeTextStore = (key, value, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        adapter.writeText(key, value);
+        return true;
+      } catch (error) {
+        reportError(opts, error, {
+          action: "write",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return false;
+  };
+  var readJsonStore = (key, fallback, opts) => {
+    const raw = readRawStore(key, opts);
+    if (raw === null)
+      return fallback;
+    try {
+      const parsed = JSON.parse(raw);
+      return opts?.parse ? opts.parse(parsed) : parsed;
+    } catch (error) {
+      reportError(opts, error, { action: "parse", key });
+      return fallback;
+    }
+  };
+  var writeJsonStore = (key, value, opts) => {
+    try {
+      return writeTextStore(key, JSON.stringify(value), opts);
+    } catch (error) {
+      reportError(opts, error, { action: "stringify", key });
+      return false;
+    }
+  };
+
+  // src/lib/text.ts
+  var escapeHtml = (text) => String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+  var escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // src/airbnb.com/airbnb-property-plus.css
+  var airbnb_property_plus_default = `#ab-property-plus-actions {
+  position: fixed;
+  top: 88px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(34, 34, 34, 0.12);
+  border-radius: 999px;
+  padding: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(6px);
+}
+
+#ab-property-plus-toggle {
+  position: fixed;
+  top: 88px;
+  right: 20px;
+  z-index: 10000;
+  display: flex;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(34, 34, 34, 0.12);
+  border-radius: 999px;
+  padding: 8px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(6px);
+}
+
+#ab-property-plus-toggle button {
+  border: 1px solid rgba(34, 34, 34, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: #222;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+#ab-property-plus-toggle button:hover {
+  background: #f7f7f7;
+}
+
+#ab-property-plus-actions.is-dragging,
+#ab-property-plus-map-panel.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+}
+
+#ab-property-plus-actions .ab-property-plus-drag-handle,
+#ab-property-plus-map-panel .ab-property-plus-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  min-width: 34px;
+  height: 34px;
+  border: 1px dashed rgba(34, 34, 34, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: #6b6b6b;
+  font-size: 15px;
+  line-height: 1;
+  cursor: grab;
+}
+
+#ab-property-plus-actions button {
+  border: 1px solid rgba(34, 34, 34, 0.2);
+  border-radius: 999px;
+  background: #fff;
+  color: #222;
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+#ab-property-plus-actions button:hover {
+  background: #f7f7f7;
+}
+
+#ab-property-plus-actions button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+#ab-property-plus-map-panel {
+  position: fixed;
+  top: 140px;
+  right: 20px;
+  z-index: 9998;
+  width: min(360px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid rgba(34, 34, 34, 0.12);
+  border-radius: 20px;
+  box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16);
+  backdrop-filter: blur(6px);
+}
+
+#ab-property-plus-map-panel .ab-property-plus-map-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#ab-property-plus-map-panel .ab-property-plus-map-heading {
+  min-width: 0;
+  flex: 1;
+}
+
+#ab-property-plus-map-panel .ab-property-plus-map-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #717171;
+}
+
+#ab-property-plus-map-panel .ab-property-plus-map-label {
+  margin-top: 2px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #222;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#ab-property-plus-map-panel .ab-property-plus-map-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#ab-property-plus-map-panel .ab-property-plus-search-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+#ab-property-plus-map-panel .ab-property-plus-map-actions button,
+#ab-property-plus-map-panel .ab-property-plus-map-actions a,
+#ab-property-plus-map-panel .ab-property-plus-search-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 34px;
+  border: 1px solid rgba(34, 34, 34, 0.14);
+  border-radius: 999px;
+  background: #fff;
+  color: #222;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  text-decoration: none;
+  padding: 0 12px;
+  cursor: pointer;
+}
+
+#ab-property-plus-map-panel iframe {
+  width: 100%;
+  height: 240px;
+  border: 0;
+  border-radius: 14px;
+  background: #f1f1f1;
+}
+
+#ab-property-plus-map-panel .ab-property-plus-map-meta {
+  font-size: 12px;
+  color: #6b6b6b;
+}
+
+#ab-property-plus-templates {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 10px 0;
+  padding: 10px;
+  width: 100%;
+  max-width: 640px;
+  background: #fff;
+  border-radius: 12px;
+  border: 1px solid #ebebeb;
+  font-size: 13px;
+}
+
+#ab-property-plus-templates select,
+#ab-property-plus-templates button {
+  height: 32px;
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  background: #fff;
+  font-size: 12px;
+  padding: 0 10px;
+}
+
+#ab-property-plus-templates button {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+#ab-property-plus-template-editor {
+  width: 100%;
+  display: none;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  padding-top: 8px;
+  border-top: 1px solid #e3e3e3;
+}
+
+#ab-property-plus-template-editor.is-open {
+  display: flex;
+}
+
+#ab-property-plus-template-editor input,
+#ab-property-plus-template-editor textarea {
+  width: 100%;
+  border: 1px solid #d6d6d6;
+  border-radius: 8px;
+  background: #fff;
+  padding: 8px 10px;
+  font-size: 12px;
+  font-family: inherit;
+}
+
+#ab-property-plus-template-editor textarea {
+  min-height: 82px;
+  resize: vertical;
+}
+
+#ab-property-plus-template-editor .ab-property-plus-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#ab-property-plus-nightly-inline {
+  margin-left: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #6a1b9a;
+}
+
+#ab-property-plus-copy-reviews {
+  position: sticky;
+  top: 10px;
+  margin-left: auto;
+  z-index: 5;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(34, 34, 34, 0.18);
+  border-radius: 999px;
+  background: #fff;
+  color: #222;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 10px 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+}
+
+#ab-property-plus-copy-reviews:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+@media (min-width: 1320px) {
+  [data-plugin-in-point-id='PDP_CONTENT'],
+  [data-testid='pdp-main-content'],
+  main[data-testid='pdp-main'] {
+    width: min(96vw, 1560px) !important;
+    max-width: min(96vw, 1560px) !important;
+    margin-inline: auto !important;
+  }
+}
+
+@media (max-width: 1000px) {
+  #ab-property-plus-actions {
+    right: 12px;
+    left: 12px;
+    top: auto;
+    bottom: 12px;
+    justify-content: center;
+    border-radius: 16px;
+  }
+
+  #ab-property-plus-map-panel {
+    right: 12px;
+    left: 12px;
+    top: auto;
+    bottom: 84px;
+    width: auto;
+  }
+
+  #ab-property-plus-templates {
+    max-width: 100%;
+  }
+}
+`;
+
   // src/airbnb.com/airbnb-property-plus.user.ts
   var STYLE_ID = "ab-property-plus-style";
   var QUICK_ACTIONS_ID = "ab-property-plus-actions";
   var QUICK_ACTIONS_HANDLE_ID = "ab-property-plus-actions-handle";
   var MAP_PANEL_ID = "ab-property-plus-map-panel";
+  var MAP_PANEL_SEARCH_ACTIONS_ID = "ab-property-plus-map-search-actions";
   var MAP_PANEL_HANDLE_ID = "ab-property-plus-map-handle";
   var TOGGLE_BAR_ID = "ab-property-plus-toggle";
   var TEMPLATE_BAR_ID = "ab-property-plus-templates";
@@ -423,327 +885,8 @@
       body: "Could you share recent internet speed test results, if you have them? Also, do you know whether the connection is fiber, cable, DSL, cellular, or another type?"
     }
   ];
-  var CSS = `
-  #${QUICK_ACTIONS_ID} {
-    position: fixed;
-    top: 88px;
-    right: 20px;
-    z-index: 9999;
-    display: flex;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(34, 34, 34, 0.12);
-    border-radius: 999px;
-    padding: 8px;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(6px);
-  }
-
-  #${TOGGLE_BAR_ID} {
-    position: fixed;
-    top: 88px;
-    right: 20px;
-    z-index: 10000;
-    display: flex;
-    gap: 8px;
-    background: rgba(255, 255, 255, 0.95);
-    border: 1px solid rgba(34, 34, 34, 0.12);
-    border-radius: 999px;
-    padding: 8px;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.15);
-    backdrop-filter: blur(6px);
-  }
-
-  #${TOGGLE_BAR_ID} button {
-    border: 1px solid rgba(34, 34, 34, 0.2);
-    border-radius: 999px;
-    background: #fff;
-    color: #222;
-    font-size: 13px;
-    font-weight: 700;
-    padding: 8px 12px;
-    cursor: pointer;
-  }
-
-  #${TOGGLE_BAR_ID} button:hover {
-    background: #f7f7f7;
-  }
-
-  #${QUICK_ACTIONS_ID}.is-dragging,
-  #${MAP_PANEL_ID}.is-dragging {
-    cursor: grabbing;
-    user-select: none;
-  }
-
-  #${QUICK_ACTIONS_ID} .ab-property-plus-drag-handle,
-  #${MAP_PANEL_ID} .ab-property-plus-drag-handle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 34px;
-    min-width: 34px;
-    height: 34px;
-    border: 1px dashed rgba(34, 34, 34, 0.18);
-    border-radius: 999px;
-    background: #fff;
-    color: #6b6b6b;
-    font-size: 15px;
-    line-height: 1;
-    cursor: grab;
-  }
-
-  #${QUICK_ACTIONS_ID} button {
-    border: 1px solid rgba(34, 34, 34, 0.2);
-    border-radius: 999px;
-    background: #fff;
-    color: #222;
-    font-size: 13px;
-    font-weight: 700;
-    padding: 8px 12px;
-    cursor: pointer;
-  }
-
-  #${QUICK_ACTIONS_ID} button:hover {
-    background: #f7f7f7;
-  }
-
-  #${QUICK_ACTIONS_ID} button:disabled {
-    opacity: 0.4;
-    cursor: default;
-  }
-
-  #${MAP_PANEL_ID} {
-    position: fixed;
-    top: 140px;
-    right: 20px;
-    z-index: 9998;
-    width: min(360px, calc(100vw - 24px));
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.97);
-    border: 1px solid rgba(34, 34, 34, 0.12);
-    border-radius: 20px;
-    box-shadow: 0 10px 34px rgba(0, 0, 0, 0.16);
-    backdrop-filter: blur(6px);
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-map-topbar {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-map-heading {
-    min-width: 0;
-    flex: 1;
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-map-kicker {
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #717171;
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-map-label {
-    margin-top: 2px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #222;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-map-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-search-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-map-actions button,
-  #${MAP_PANEL_ID} .ab-property-plus-map-actions a,
-  #${MAP_PANEL_ID} .ab-property-plus-search-actions a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    border: 1px solid rgba(34, 34, 34, 0.14);
-    border-radius: 999px;
-    background: #fff;
-    color: #222;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    text-decoration: none;
-    padding: 0 12px;
-    cursor: pointer;
-  }
-
-  #${MAP_PANEL_ID} iframe {
-    width: 100%;
-    height: 240px;
-    border: 0;
-    border-radius: 14px;
-    background: #f1f1f1;
-  }
-
-  #${MAP_PANEL_ID} .ab-property-plus-map-meta {
-    font-size: 12px;
-    color: #6b6b6b;
-  }
-
-  #${TEMPLATE_BAR_ID} {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin: 10px 0;
-    padding: 10px;
-    width: 100%;
-    max-width: 640px;
-    background: #fff;
-    border-radius: 12px;
-    border: 1px solid #ebebeb;
-    font-size: 13px;
-  }
-
-  #${TEMPLATE_BAR_ID} select,
-  #${TEMPLATE_BAR_ID} button {
-    height: 32px;
-    border: 1px solid #d6d6d6;
-    border-radius: 8px;
-    background: #fff;
-    font-size: 12px;
-    padding: 0 10px;
-  }
-
-  #${TEMPLATE_BAR_ID} button {
-    cursor: pointer;
-    font-weight: 600;
-  }
-
-  #${TEMPLATE_EDITOR_ID} {
-    width: 100%;
-    display: none;
-    flex-direction: column;
-    gap: 8px;
-    margin-top: 4px;
-    padding-top: 8px;
-    border-top: 1px solid #e3e3e3;
-  }
-
-  #${TEMPLATE_EDITOR_ID}.is-open {
-    display: flex;
-  }
-
-  #${TEMPLATE_EDITOR_ID} input,
-  #${TEMPLATE_EDITOR_ID} textarea {
-    width: 100%;
-    border: 1px solid #d6d6d6;
-    border-radius: 8px;
-    background: #fff;
-    padding: 8px 10px;
-    font-size: 12px;
-    font-family: inherit;
-  }
-
-  #${TEMPLATE_EDITOR_ID} textarea {
-    min-height: 82px;
-    resize: vertical;
-  }
-
-  #${TEMPLATE_EDITOR_ID} .ab-property-plus-editor-actions {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 6px;
-  }
-
-  #${NIGHTLY_INLINE_ID} {
-    margin-left: 8px;
-    font-size: 14px;
-    font-weight: 700;
-    color: #6a1b9a;
-  }
-
-  #${REVIEWS_COPY_BTN_ID} {
-    position: sticky;
-    top: 10px;
-    margin-left: auto;
-    z-index: 5;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid rgba(34, 34, 34, 0.18);
-    border-radius: 999px;
-    background: #fff;
-    color: #222;
-    font-size: 12px;
-    font-weight: 700;
-    line-height: 1;
-    padding: 10px 14px;
-    cursor: pointer;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-  }
-
-  #${REVIEWS_COPY_BTN_ID}:disabled {
-    opacity: 0.6;
-    cursor: default;
-  }
-
-  @media (min-width: 1320px) {
-    [data-plugin-in-point-id='PDP_CONTENT'],
-    [data-testid='pdp-main-content'],
-    main[data-testid='pdp-main'] {
-      width: min(96vw, 1560px) !important;
-      max-width: min(96vw, 1560px) !important;
-      margin-inline: auto !important;
-    }
-  }
-
-  @media (max-width: 1000px) {
-    #${QUICK_ACTIONS_ID} {
-      right: 12px;
-      left: 12px;
-      top: auto;
-      bottom: 12px;
-      justify-content: center;
-      border-radius: 16px;
-    }
-
-    #${MAP_PANEL_ID} {
-      right: 12px;
-      left: 12px;
-      top: auto;
-      bottom: 84px;
-      width: auto;
-    }
-
-    #${TEMPLATE_BAR_ID} { max-width: 100%; }
-  }
-`;
-  var isVisible = (el) => {
-    if (!el.isConnected)
-      return false;
-    if (el.offsetParent !== null)
-      return true;
-    const style = window.getComputedStyle(el);
-    return style.display !== "none" && style.visibility !== "hidden";
-  };
   var qText = (el) => {
     return (el.textContent ?? "").replace(/\s+/g, " ").trim();
-  };
-  var escapeRegExp = (value) => {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   };
   var qInnerLines = (el) => {
     const raw = (el.innerText || qText(el)).split(/\n+/g);
@@ -758,27 +901,13 @@
     }
     return lines;
   };
-  var sleep = (ms) => {
-    return new Promise((resolve) => {
-      window.setTimeout(resolve, ms);
-    });
-  };
   var loadFloatingPositions = () => {
-    try {
-      const raw = localStorage.getItem(FLOATING_POS_KEY);
-      if (!raw)
-        return {};
-      return JSON.parse(raw);
-    } catch (_e) {
-      return {};
-    }
+    return readJsonStore(FLOATING_POS_KEY, {});
   };
   var saveFloatingPosition = (key, value) => {
-    try {
-      const next = loadFloatingPositions();
-      next[key] = value;
-      localStorage.setItem(FLOATING_POS_KEY, JSON.stringify(next));
-    } catch (_e) {}
+    const next = loadFloatingPositions();
+    next[key] = value;
+    writeJsonStore(FLOATING_POS_KEY, next);
   };
   var clamp = (value, min, max) => {
     return Math.min(Math.max(value, min), max);
@@ -1021,16 +1150,10 @@
     });
   };
   var loadUiVisible = () => {
-    try {
-      return localStorage.getItem(VISIBILITY_KEY) !== "0";
-    } catch (_e) {
-      return true;
-    }
+    return readTextStore(VISIBILITY_KEY, "1") !== "0";
   };
   var saveUiVisible = (visible) => {
-    try {
-      localStorage.setItem(VISIBILITY_KEY, visible ? "1" : "0");
-    } catch (_e) {}
+    writeTextStore(VISIBILITY_KEY, visible ? "1" : "0");
   };
   var removePageBoundUi = () => {
     document.getElementById(QUICK_ACTIONS_ID)?.remove();
@@ -1175,13 +1298,14 @@
     }
     const approxLabel = mapData.isApproximate ? "Approximate area from Airbnb map" : "Exact map pin";
     if (!panel.dataset.initialized) {
-      panel.innerHTML = '<div class="ab-property-plus-map-topbar">' + `<button id="${MAP_PANEL_HANDLE_ID}" class="ab-property-plus-drag-handle" type="button" aria-label="Move map panel" title="Move map panel">::</button>` + '<div class="ab-property-plus-map-heading">' + '<div class="ab-property-plus-map-kicker"></div>' + '<div class="ab-property-plus-map-label"></div>' + "</div>" + "</div>" + '<div class="ab-property-plus-map-actions">' + '<a data-action="open-google-maps" target="_blank" rel="noreferrer noopener">Google Maps</a>' + '<button type="button" data-action="copy-coords"></button>' + "</div>" + '<div class="ab-property-plus-search-actions">' + '<a data-service="google" target="_blank" rel="noreferrer noopener">Google</a>' + '<a data-service="google-travel" target="_blank" rel="noreferrer noopener">Travel</a>' + '<a data-service="booking" target="_blank" rel="noreferrer noopener">Booking</a>' + '<a data-service="tripadvisor" target="_blank" rel="noreferrer noopener">TripAdvisor</a>' + '<a data-service="super" target="_blank" rel="noreferrer noopener">Super</a>' + "</div>" + '<iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Listing map preview"></iframe>';
+      panel.innerHTML = '<div class="ab-property-plus-map-topbar">' + `<button id="${MAP_PANEL_HANDLE_ID}" class="ab-property-plus-drag-handle" type="button" aria-label="Move map panel" title="Move map panel">::</button>` + '<div class="ab-property-plus-map-heading">' + '<div class="ab-property-plus-map-kicker"></div>' + '<div class="ab-property-plus-map-label"></div>' + "</div>" + "</div>" + '<div class="ab-property-plus-map-actions">' + '<a data-action="open-google-maps" target="_blank" rel="noreferrer noopener">Google Maps</a>' + '<button type="button" data-action="copy-coords"></button>' + "</div>" + '<iframe loading="lazy" referrerpolicy="no-referrer-when-downgrade" title="Listing map preview"></iframe>';
       panel.dataset.initialized = "true";
     }
     const handle = panel.querySelector(`#${MAP_PANEL_HANDLE_ID}`);
     const kicker = panel.querySelector(".ab-property-plus-map-kicker");
     const label = panel.querySelector(".ab-property-plus-map-label");
     const googleMapsLink = panel.querySelector('a[data-action="open-google-maps"]');
+    const mapActions = panel.querySelector(".ab-property-plus-map-actions");
     const copyBtn = panel.querySelector('button[data-action="copy-coords"]');
     const iframe = panel.querySelector("iframe");
     makeFloatingDraggable("map", panel, handle);
@@ -1200,8 +1324,7 @@
       checkin: searchData.checkin,
       checkout: searchData.checkout,
       guests: searchData.guests
-    }) : [];
-    const hotelLinkMap = new Map(hotelLinks.map((link) => [link.service, link]));
+    }).filter((link) => link.service !== "google-maps") : [];
     if (kicker)
       kicker.textContent = approxLabel;
     if (label) {
@@ -1212,17 +1335,12 @@
       googleMapsLink.href = googleMapsUrl;
     if (iframe && iframe.getAttribute("src") !== embedUrl)
       iframe.src = embedUrl;
-    panel.querySelectorAll(".ab-property-plus-search-actions a[data-service]").forEach((anchor) => {
-      const service = anchor.dataset.service ?? "";
-      const link = hotelLinkMap.get(service);
-      if (!link) {
-        anchor.style.display = "none";
-        return;
-      }
-      anchor.style.display = "";
-      anchor.href = link.href;
-      anchor.title = link.title;
-      anchor.textContent = link.label;
+    renderHotelSearchBar({
+      anchor: mapActions,
+      barClassName: "ab-property-plus-search-actions",
+      barId: MAP_PANEL_SEARCH_ACTIONS_ID,
+      links: hotelLinks,
+      placement: "after"
     });
     if (copyBtn) {
       const defaultCopyLabel = `Copy ${coordsText}`;
@@ -1293,22 +1411,22 @@
     inline.textContent = `${parseCurrency(nightly, symbol)}/n`;
   };
   var loadTemplates = () => {
-    try {
-      const raw = localStorage.getItem(TEMPLATES_KEY);
-      if (!raw)
-        return DEFAULT_TEMPLATES;
-      const parsed = JSON.parse(raw);
-      if (!Array.isArray(parsed) || !parsed.length)
-        return DEFAULT_TEMPLATES;
-      return parsed.filter((t) => t?.id && t?.name && t?.body);
-    } catch (_e) {
-      return DEFAULT_TEMPLATES;
-    }
+    return readJsonStore(TEMPLATES_KEY, DEFAULT_TEMPLATES, {
+      parse: (value) => {
+        if (!Array.isArray(value) || !value.length)
+          return DEFAULT_TEMPLATES;
+        const templates = value.filter((template) => {
+          if (!template || typeof template !== "object")
+            return false;
+          const candidate = template;
+          return typeof candidate.id === "string" && typeof candidate.name === "string" && typeof candidate.body === "string";
+        });
+        return templates.length ? templates : DEFAULT_TEMPLATES;
+      }
+    });
   };
   var saveTemplates = (templates) => {
-    try {
-      localStorage.setItem(TEMPLATES_KEY, JSON.stringify(templates));
-    } catch (_e) {}
+    writeJsonStore(TEMPLATES_KEY, templates);
   };
   var copyTextWithFallback = async (text, promptTitle) => {
     if (navigator.clipboard?.writeText) {
@@ -1867,9 +1985,6 @@ ${body.trim()}
 
 Thanks!`;
   };
-  var escapeHtml = (value) => {
-    return value.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-  };
   var ensureTemplateToolbar = () => {
     if (!loadUiVisible()) {
       document.getElementById(TEMPLATE_BAR_ID)?.remove();
@@ -1992,7 +2107,7 @@ Thanks!`;
     ensureReviewsCopyButton();
   };
   var main = () => {
-    injectCSS(STYLE_ID, CSS);
+    injectCSS(STYLE_ID, airbnb_property_plus_default);
     run();
     const observer = observeDomChanges(run, {
       root: document.body,
