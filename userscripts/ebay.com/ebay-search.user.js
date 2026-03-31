@@ -46,6 +46,74 @@
     });
   };
 
+  // src/lib/dom-observe.ts
+  var DEFAULT_INIT = {
+    childList: true,
+    subtree: true
+  };
+  var observeDomChanges = (run, opts) => {
+    let timer = null;
+    let disconnectTimer = null;
+    let currentTarget = opts?.root ?? null;
+    let currentInit = opts?.observerInit ?? DEFAULT_INIT;
+    const disconnect = () => {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      if (disconnectTimer) {
+        window.clearTimeout(disconnectTimer);
+        disconnectTimer = null;
+      }
+      observer.disconnect();
+    };
+    const refreshDisconnectTimer = () => {
+      if (disconnectTimer)
+        window.clearTimeout(disconnectTimer);
+      if (!opts?.disconnectAfterMs)
+        return;
+      disconnectTimer = window.setTimeout(() => {
+        disconnect();
+      }, opts.disconnectAfterMs);
+    };
+    const scheduleRun = () => {
+      if (timer)
+        window.clearTimeout(timer);
+      const debounceMs = opts?.debounceMs ?? 0;
+      if (debounceMs <= 0) {
+        run();
+        refreshDisconnectTimer();
+        return;
+      }
+      timer = window.setTimeout(() => {
+        timer = null;
+        run();
+        refreshDisconnectTimer();
+      }, debounceMs);
+    };
+    const observer = new MutationObserver((mutations) => {
+      if (opts?.shouldRun && !opts.shouldRun(mutations))
+        return;
+      scheduleRun();
+    });
+    const observe = (target, options) => {
+      const nextTarget = target ?? currentTarget ?? document.body;
+      if (!nextTarget)
+        return;
+      currentTarget = nextTarget;
+      currentInit = options ?? currentInit;
+      observer.disconnect();
+      observer.observe(nextTarget, currentInit);
+      refreshDisconnectTimer();
+    };
+    if (opts?.runImmediately)
+      scheduleRun();
+    return {
+      disconnect,
+      observe
+    };
+  };
+
   // src/ebay.com/ebay-search.user.ts
   var hasInitialized = false;
   var highlightingApplied = false;
@@ -63,15 +131,15 @@
     watchForDynamicContent();
   };
   var watchForDynamicContent = () => {
-    const observer = new MutationObserver(() => {
+    const resultsContainer = document.querySelector(".srp-results");
+    if (!resultsContainer)
+      return;
+    const observer = observeDomChanges(() => {
       if (!highlightingApplied || document.querySelector(".s-card__title .su-styled-text:not([data-highlighted])")) {
         highlightKeywords();
       }
-    });
-    const resultsContainer = document.querySelector(".srp-results");
-    if (resultsContainer) {
-      observer.observe(resultsContainer, { childList: true, subtree: true });
-    }
+    }, { root: resultsContainer });
+    observer.observe(resultsContainer, { childList: true, subtree: true });
   };
   var interceptSearchForm = () => {
     const searchForm = document.querySelector("#gh-f");

@@ -28,6 +28,147 @@
     return style;
   };
 
+  // src/lib/dom-observe.ts
+  var DEFAULT_INIT = {
+    childList: true,
+    subtree: true
+  };
+  var observeDomChanges = (run, opts) => {
+    let timer = null;
+    let disconnectTimer = null;
+    let currentTarget = opts?.root ?? null;
+    let currentInit = opts?.observerInit ?? DEFAULT_INIT;
+    const disconnect = () => {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      if (disconnectTimer) {
+        window.clearTimeout(disconnectTimer);
+        disconnectTimer = null;
+      }
+      observer.disconnect();
+    };
+    const refreshDisconnectTimer = () => {
+      if (disconnectTimer)
+        window.clearTimeout(disconnectTimer);
+      if (!opts?.disconnectAfterMs)
+        return;
+      disconnectTimer = window.setTimeout(() => {
+        disconnect();
+      }, opts.disconnectAfterMs);
+    };
+    const scheduleRun = () => {
+      if (timer)
+        window.clearTimeout(timer);
+      const debounceMs = opts?.debounceMs ?? 0;
+      if (debounceMs <= 0) {
+        run();
+        refreshDisconnectTimer();
+        return;
+      }
+      timer = window.setTimeout(() => {
+        timer = null;
+        run();
+        refreshDisconnectTimer();
+      }, debounceMs);
+    };
+    const observer = new MutationObserver((mutations) => {
+      if (opts?.shouldRun && !opts.shouldRun(mutations))
+        return;
+      scheduleRun();
+    });
+    const observe = (target, options) => {
+      const nextTarget = target ?? currentTarget ?? document.body;
+      if (!nextTarget)
+        return;
+      currentTarget = nextTarget;
+      currentInit = options ?? currentInit;
+      observer.disconnect();
+      observer.observe(nextTarget, currentInit);
+      refreshDisconnectTimer();
+    };
+    if (opts?.runImmediately)
+      scheduleRun();
+    return {
+      disconnect,
+      observe
+    };
+  };
+
+  // src/lib/page-lifecycle.ts
+  var KEY = "__lbLocationChangeController__";
+  var scheduleListener = (listener) => {
+    const nextHref = window.location.href;
+    if (nextHref === listener.lastHref)
+      return;
+    listener.lastHref = nextHref;
+    if (listener.timer)
+      window.clearTimeout(listener.timer);
+    if (listener.debounceMs <= 0) {
+      listener.callback();
+      return;
+    }
+    listener.timer = window.setTimeout(() => {
+      listener.timer = null;
+      listener.callback();
+    }, listener.debounceMs);
+  };
+  var ensureController = () => {
+    const existing = window[KEY];
+    if (existing)
+      return existing;
+    const pushState = history.pushState.bind(history);
+    const replaceState = history.replaceState.bind(history);
+    const controller = {
+      listeners: new Set,
+      pushState,
+      replaceState,
+      notify: () => {
+        controller.listeners.forEach((listener) => {
+          scheduleListener(listener);
+        });
+      },
+      restore: () => {
+        history.pushState = pushState;
+        history.replaceState = replaceState;
+        window.removeEventListener("popstate", controller.onPopState);
+        delete window[KEY];
+      },
+      onPopState: () => {
+        controller.notify();
+      }
+    };
+    history.pushState = (...args) => {
+      pushState(...args);
+      controller.notify();
+    };
+    history.replaceState = (...args) => {
+      replaceState(...args);
+      controller.notify();
+    };
+    window.addEventListener("popstate", controller.onPopState);
+    window[KEY] = controller;
+    return controller;
+  };
+  var watchLocationChange = (callback, opts) => {
+    const controller = ensureController();
+    const listener = {
+      callback,
+      debounceMs: opts?.debounceMs ?? 0,
+      lastHref: window.location.href,
+      timer: null
+    };
+    controller.listeners.add(listener);
+    return () => {
+      if (listener.timer)
+        window.clearTimeout(listener.timer);
+      controller.listeners.delete(listener);
+      if (controller.listeners.size === 0)
+        controller.restore();
+    };
+  };
+
   // src/airbnb.com/airbnb-score.css
   var airbnb_score_default = `.ab-score-item {
   transition: opacity 120ms ease;
@@ -1997,23 +2138,12 @@ body.ab-agg-open {
     closeAggregatedOverlay();
     invalidateAggCache();
   }
-  var _push = history.pushState.bind(history);
-  history.pushState = (...args) => {
-    _push(...args);
-    onNavigation();
-  };
-  var _replace = history.replaceState.bind(history);
-  history.replaceState = (...args) => {
-    _replace(...args);
-    onNavigation();
-  };
-  window.addEventListener("popstate", onNavigation);
-  var debounceTimer;
-  var observer = new MutationObserver(() => {
-    clearTimeout(debounceTimer);
-    debounceTimer = setTimeout(processCards, 600);
-  });
   var container = document.querySelector('[data-testid="browse-list-and-map-container"]') || document.querySelector('[data-testid="homes-search-result"]') || document.body;
+  watchLocationChange(onNavigation);
+  var observer = observeDomChanges(processCards, {
+    root: container,
+    debounceMs: 600
+  });
   initGrid(observer, container);
   observer.observe(container, { childList: true, subtree: true });
 })();

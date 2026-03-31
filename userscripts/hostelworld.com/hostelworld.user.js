@@ -55,6 +55,375 @@
     return style;
   };
 
+  // src/lib/hotel-search.ts
+  var cleanPart = (value) => {
+    return (value ?? "").replace(/\s+/g, " ").trim();
+  };
+  var uniqueParts = (parts) => {
+    const seen = new Set;
+    const out = [];
+    parts.forEach((part) => {
+      const cleaned = cleanPart(part);
+      const key = cleaned.toLowerCase();
+      if (!cleaned || seen.has(key))
+        return;
+      seen.add(key);
+      out.push(cleaned);
+    });
+    return out;
+  };
+  var joinParts = (parts, sep) => {
+    return uniqueParts(parts).join(sep);
+  };
+  var getFallbackDestination = (ctx) => {
+    return joinParts([ctx.city, ctx.country], ", ");
+  };
+  var getPreferredSearchLocationText = (ctx) => {
+    const city = cleanPart(ctx.city);
+    if (city) {
+      return joinParts([city, ctx.country], ", ");
+    }
+    return getBestLocationText(ctx);
+  };
+  var normalizeLocationPart = (value) => {
+    return cleanPart(value).toLowerCase();
+  };
+  var isAddressCoveringLocationPart = (address, part) => {
+    const normalizedAddress = normalizeLocationPart(address);
+    const normalizedPart = normalizeLocationPart(part);
+    if (!normalizedAddress || !normalizedPart)
+      return false;
+    return normalizedAddress.split(",").map((segment) => segment.trim()).some((segment) => segment === normalizedPart || segment.endsWith(` ${normalizedPart}`));
+  };
+  var getBestLocationText = (ctx) => {
+    const locationParts = [];
+    const address = cleanPart(ctx.address);
+    if (address)
+      locationParts.push(address);
+    [ctx.neighborhood, ctx.city, ctx.country].forEach((part) => {
+      const cleaned = cleanPart(part);
+      if (!cleaned || isAddressCoveringLocationPart(address, cleaned))
+        return;
+      locationParts.push(cleaned);
+    });
+    return locationParts.join(", ");
+  };
+  var getPrimarySearchText = (ctx) => {
+    return joinParts([ctx.propertyName, getPreferredSearchLocationText(ctx)], ", ");
+  };
+  var getDestinationSearchText = (ctx) => {
+    return joinParts([ctx.propertyName, ctx.city, ctx.country], " ");
+  };
+  var getGoogleMapsText = (ctx) => {
+    if (Number.isFinite(ctx.lat) && Number.isFinite(ctx.lng)) {
+      return `${ctx.lat},${ctx.lng}`;
+    }
+    return getPrimarySearchText(ctx) || getDestinationSearchText(ctx) || getFallbackDestination(ctx);
+  };
+  var parseTravelDate = (value) => {
+    const match = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/.exec(value ?? "");
+    if (!match?.groups)
+      return null;
+    const year = Number.parseInt(match.groups.year, 10);
+    const month = Number.parseInt(match.groups.month, 10);
+    const day = Number.parseInt(match.groups.day, 10);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day))
+      return null;
+    const utcMs = Date.UTC(year, month - 1, day);
+    const roundTrip = new Date(utcMs);
+    if (roundTrip.getUTCFullYear() !== year || roundTrip.getUTCMonth() !== month - 1 || roundTrip.getUTCDate() !== day) {
+      return null;
+    }
+    return { year, month, day, utcMs };
+  };
+  var getGoogleTravelDateRange = (ctx) => {
+    const checkin = parseTravelDate(ctx.checkin);
+    const checkout = parseTravelDate(ctx.checkout);
+    if (!checkin || !checkout)
+      return null;
+    const nights = Math.round((checkout.utcMs - checkin.utcMs) / 86400000);
+    if (!Number.isInteger(nights) || nights <= 0)
+      return null;
+    return { checkin, checkout, nights };
+  };
+  var encodeVarint = (value) => {
+    const bytes = [];
+    let next = value;
+    while (next >= 128) {
+      bytes.push(next & 127 | 128);
+      next >>= 7;
+    }
+    bytes.push(next);
+    return bytes;
+  };
+  var encodeFieldVarint = (fieldNumber, value) => {
+    return [...encodeVarint(fieldNumber << 3 | 0), ...encodeVarint(value)];
+  };
+  var encodeFieldBytes = (fieldNumber, payload) => {
+    return [...encodeVarint(fieldNumber << 3 | 2), ...encodeVarint(payload.length), ...payload];
+  };
+  var encodeTravelDateMessage = (date) => {
+    return [
+      ...encodeFieldVarint(1, date.year),
+      ...encodeFieldVarint(2, date.month),
+      ...encodeFieldVarint(3, date.day)
+    ];
+  };
+  var encodeBase64Url = (bytes) => {
+    let binary = "";
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  };
+  var buildGoogleTravelTs = (ctx) => {
+    const dateRange = getGoogleTravelDateRange(ctx);
+    if (!dateRange)
+      return null;
+    const travelDates = [
+      ...encodeFieldBytes(1, encodeTravelDateMessage(dateRange.checkin)),
+      ...encodeFieldBytes(2, encodeTravelDateMessage(dateRange.checkout)),
+      ...encodeFieldVarint(3, dateRange.nights)
+    ];
+    const stayConfig = [
+      ...encodeFieldBytes(2, travelDates),
+      ...encodeFieldBytes(6, encodeFieldVarint(1, 1))
+    ];
+    const payload = [
+      ...encodeFieldBytes(1, encodeFieldBytes(3, [])),
+      ...encodeFieldBytes(2, stayConfig)
+    ];
+    return encodeBase64Url([...encodeFieldVarint(1, 1), ...encodeFieldBytes(3, payload)]);
+  };
+  var buildGoogleTravelUrl = (ctx) => {
+    const query = getPrimarySearchText(ctx) || getDestinationSearchText(ctx) || getFallbackDestination(ctx);
+    const params = new URLSearchParams({ q: query });
+    const travelTs = buildGoogleTravelTs(ctx);
+    if (travelTs) {
+      params.set("qs", "CAE4AA");
+      params.set("ts", travelTs);
+      params.set("ap", "MAE");
+    }
+    return `https://www.google.com/travel/search?${params.toString()}`;
+  };
+  var getTripAdvisorText = (ctx) => {
+    const base = getPrimarySearchText(ctx) || getDestinationSearchText(ctx);
+    if (!base)
+      return "";
+    if (/\b(hostel|hotel|resort|apartment|apartments|villa|inn|lodge|suite|suites)\b/i.test(base)) {
+      return base;
+    }
+    const hint = ctx.source === "hostelworld" ? "hostel" : "hotel";
+    return `${base} ${hint}`.trim();
+  };
+  var getPositiveGuestCount = (guests) => {
+    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.floor(guests) : 1;
+  };
+  var buildSuperSearchUrl = (ctx) => {
+    const destination = getDestinationSearchText(ctx) || getFallbackDestination(ctx);
+    const query = joinParts([ctx.propertyName, ctx.city], " ") || destination;
+    const params = new URLSearchParams({
+      destination,
+      super_lookup: "1",
+      super_query: query,
+      super_name: cleanPart(ctx.propertyName),
+      super_city: cleanPart(ctx.city),
+      super_country: cleanPart(ctx.country),
+      num_adults: String(getPositiveGuestCount(ctx.guests)),
+      children: "[]",
+      expand_params: "false"
+    });
+    if (ctx.checkin)
+      params.set("checkin_at", ctx.checkin);
+    if (ctx.checkout)
+      params.set("checkout_at", ctx.checkout);
+    return `https://www.super.com/home/travel?${params.toString()}`;
+  };
+  var buildHotelSearchLinks = (ctx) => {
+    const primary = getPrimarySearchText(ctx) || getDestinationSearchText(ctx);
+    const maps = getGoogleMapsText(ctx);
+    const tripAdvisor = getTripAdvisorText(ctx) || primary;
+    const googleTravel = buildGoogleTravelUrl(ctx);
+    const encodedPrimary = encodeURIComponent(primary);
+    const encodedMaps = encodeURIComponent(maps);
+    const encodedTripAdvisor = encodeURIComponent(tripAdvisor);
+    const propertyLabel = cleanPart(ctx.propertyName) || cleanPart(ctx.city) || "property";
+    return [
+      {
+        service: "google",
+        label: "Google",
+        href: `https://www.google.com/search?q=${encodedPrimary}`,
+        title: `Search Google: ${propertyLabel}`
+      },
+      {
+        service: "google-travel",
+        label: "Travel",
+        href: googleTravel,
+        title: `Search Google Travel: ${propertyLabel}`
+      },
+      {
+        service: "google-maps",
+        label: "Maps",
+        href: `https://www.google.com/maps/search/?api=1&query=${encodedMaps}`,
+        title: `Open in Google Maps: ${propertyLabel}`
+      },
+      {
+        service: "booking",
+        label: "Booking",
+        href: `https://www.booking.com/searchresults.html?ss=${encodedPrimary}`,
+        title: `Search Booking.com: ${propertyLabel}`
+      },
+      {
+        service: "tripadvisor",
+        label: "TripAdvisor",
+        href: `https://www.tripadvisor.com/Search?q=${encodedTripAdvisor}`,
+        title: `Search TripAdvisor: ${propertyLabel}`
+      },
+      {
+        service: "super",
+        label: "Super",
+        href: buildSuperSearchUrl(ctx),
+        title: `Search Super.com: ${propertyLabel}`
+      }
+    ];
+  };
+
+  // src/lib/hotel-search-ui.ts
+  var buildSignature = (links, getLinkText) => {
+    return links.map((link) => `${getLinkText(link)}:${link.href}`).join("|");
+  };
+  var renderHotelSearchBar = (opts) => {
+    const existing = document.getElementById(opts.barId);
+    const placement = opts.placement ?? "append";
+    const getLinkText = opts.getLinkText ?? ((link) => link.label);
+    if (!opts.anchor || !opts.links.length) {
+      existing?.remove();
+      return null;
+    }
+    let bar = existing;
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = opts.barId;
+    }
+    if (opts.barClassName)
+      bar.className = opts.barClassName;
+    if (opts.barAttrs) {
+      Object.entries(opts.barAttrs).forEach(([key, value]) => {
+        bar.setAttribute(key, value);
+      });
+    }
+    const signature = buildSignature(opts.links, getLinkText);
+    const expectedParent = placement === "append" ? opts.anchor : opts.anchor.parentElement;
+    const isMounted = placement === "append" ? bar.parentElement === opts.anchor : bar.previousElementSibling === opts.anchor && bar.parentElement === expectedParent;
+    if (bar.dataset.signature === signature && isMounted) {
+      return bar;
+    }
+    bar.textContent = "";
+    bar.dataset.signature = signature;
+    opts.links.forEach((link) => {
+      const a = document.createElement("a");
+      a.href = link.href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.title = link.title;
+      const linkClassName = opts.getLinkClassName?.(link);
+      if (linkClassName)
+        a.className = linkClassName;
+      if (opts.renderLinkContent) {
+        opts.renderLinkContent(link, a);
+      } else {
+        a.textContent = getLinkText(link);
+      }
+      bar.appendChild(a);
+    });
+    if (placement === "append") {
+      if (bar.parentElement !== opts.anchor)
+        opts.anchor.appendChild(bar);
+      return bar;
+    }
+    if (!opts.anchor.parentElement) {
+      bar.remove();
+      return null;
+    }
+    if (bar.previousElementSibling !== opts.anchor || bar.parentElement !== opts.anchor.parentElement) {
+      opts.anchor.parentElement.insertBefore(bar, opts.anchor.nextSibling);
+    }
+    return bar;
+  };
+
+  // src/lib/page-lifecycle.ts
+  var KEY = "__lbLocationChangeController__";
+  var scheduleListener = (listener) => {
+    const nextHref = window.location.href;
+    if (nextHref === listener.lastHref)
+      return;
+    listener.lastHref = nextHref;
+    if (listener.timer)
+      window.clearTimeout(listener.timer);
+    if (listener.debounceMs <= 0) {
+      listener.callback();
+      return;
+    }
+    listener.timer = window.setTimeout(() => {
+      listener.timer = null;
+      listener.callback();
+    }, listener.debounceMs);
+  };
+  var ensureController = () => {
+    const existing = window[KEY];
+    if (existing)
+      return existing;
+    const pushState = history.pushState.bind(history);
+    const replaceState = history.replaceState.bind(history);
+    const controller = {
+      listeners: new Set,
+      pushState,
+      replaceState,
+      notify: () => {
+        controller.listeners.forEach((listener) => {
+          scheduleListener(listener);
+        });
+      },
+      restore: () => {
+        history.pushState = pushState;
+        history.replaceState = replaceState;
+        window.removeEventListener("popstate", controller.onPopState);
+        delete window[KEY];
+      },
+      onPopState: () => {
+        controller.notify();
+      }
+    };
+    history.pushState = (...args) => {
+      pushState(...args);
+      controller.notify();
+    };
+    history.replaceState = (...args) => {
+      replaceState(...args);
+      controller.notify();
+    };
+    window.addEventListener("popstate", controller.onPopState);
+    window[KEY] = controller;
+    return controller;
+  };
+  var watchLocationChange = (callback, opts) => {
+    const controller = ensureController();
+    const listener = {
+      callback,
+      debounceMs: opts?.debounceMs ?? 0,
+      lastHref: window.location.href,
+      timer: null
+    };
+    controller.listeners.add(listener);
+    return () => {
+      if (listener.timer)
+        window.clearTimeout(listener.timer);
+      controller.listeners.delete(listener);
+      if (controller.listeners.size === 0)
+        controller.restore();
+    };
+  };
+
   // src/hostelworld.com/hostelworld.css
   var hostelworld_default = `#hw-review-search-btn {
   position: fixed;
@@ -332,6 +701,9 @@
 .hw-sb-btn-google {
   background: #4285f4;
 }
+.hw-sb-btn-travel {
+  background: #1a73e8;
+}
 .hw-sb-btn-maps {
   background: #34a853;
 }
@@ -355,13 +727,53 @@
     const m = window.location.pathname.match(/\/(\d+)(?:$|[?#/])/);
     return m ? m[1] : null;
   };
-  var getNameAndCity = () => {
+  var slugToWords = (value) => decodeURIComponent(value).replace(/-/g, " ").replace(/\s+/g, " ").trim();
+  var getNameAndCityFromUrl = () => {
     const m = window.location.pathname.match(/hosteldetails\.php\/([^/]+)\/([^/]+)\/\d+/);
     if (!m)
       return { name: "", city: "" };
     return {
-      name: decodeURIComponent(m[1]).replace(/-/g, " "),
-      city: decodeURIComponent(m[2]).replace(/-/g, " ")
+      name: slugToWords(m[1]),
+      city: slugToWords(m[2])
+    };
+  };
+  var cleanPropertyName = (value) => value.replace(/\s*[|,-]\s*Hostelworld.*$/i, "").replace(/\s+-\s+Hostelworld.*$/i, "").replace(/\s+/g, " ").trim();
+  var parseJsonRecord = (value) => {
+    if (!value || typeof value !== "object")
+      return null;
+    const rec = value;
+    const address = rec.address && typeof rec.address === "object" ? rec.address : null;
+    const name = typeof rec.name === "string" ? cleanPropertyName(rec.name) : "";
+    const city = typeof address?.addressLocality === "string" ? address.addressLocality.trim() : "";
+    const country = typeof address?.addressCountry === "string" ? address.addressCountry.trim() : "";
+    return name || city || country ? { name, city, country } : null;
+  };
+  var getPropertyDetails = () => {
+    const fromUrl = getNameAndCityFromUrl();
+    const h1 = cleanPropertyName(document.querySelector("h1")?.textContent?.trim() || "");
+    const ogTitle = cleanPropertyName(document.querySelector('meta[property="og:title"]')?.content || "");
+    const title = cleanPropertyName(document.title);
+    const pageName = h1 || ogTitle || title || fromUrl.name;
+    for (const script of Array.from(document.querySelectorAll('script[type="application/ld+json"]'))) {
+      try {
+        const parsed = JSON.parse(script.textContent || "");
+        const records = Array.isArray(parsed) ? parsed : typeof parsed === "object" && parsed && ("@graph" in parsed) ? parsed["@graph"] ?? [] : [parsed];
+        for (const record of records) {
+          const details = parseJsonRecord(record);
+          if (!details)
+            continue;
+          return {
+            name: pageName || details.name || fromUrl.name,
+            city: details.city || fromUrl.city,
+            country: details.country
+          };
+        }
+      } catch (_e) {}
+    }
+    return {
+      name: pageName,
+      city: fromUrl.city,
+      country: ""
     };
   };
   var escRe = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -376,27 +788,6 @@
     if (citySentence?.[1])
       return citySentence[1].trim();
     return "";
-  };
-  var buildSuperUrl = (destination, query, name, city, country) => {
-    const params = new URLSearchParams({
-      destination,
-      super_lookup: "1",
-      super_query: query,
-      super_name: name,
-      super_city: city,
-      super_country: country,
-      num_adults: window.location.search ? new URLSearchParams(window.location.search).get("guests") || "1" : "1",
-      children: "[]",
-      expand_params: "false"
-    });
-    const urlParams = new URLSearchParams(window.location.search);
-    const from = urlParams.get("from");
-    const to = urlParams.get("to");
-    if (from)
-      params.set("checkin_at", from);
-    if (to)
-      params.set("checkout_at", to);
-    return `https://www.super.com/home/travel?${params.toString()}`;
   };
   var reviewsUrl = (propId, page, allLangs) => `https://prod.apigee.hostelworld.com/legacy-hwapi-service/2.2/properties/${propId}/reviews/` + `?sort=-date&allLanguages=${allLangs ? "true" : "false"}&page=${page}&monthCount=36&application=web`;
   var fetchPage = async (propId, page, allLangs) => {
@@ -650,59 +1041,63 @@
     return btn;
   };
   var buildSearchBar = () => {
-    const { name, city } = getNameAndCity();
+    const { name, city, country: parsedCountry } = getPropertyDetails();
     if (!name)
       return;
-    const country = getCountry(city);
-    const destination = city || [name, city].filter(Boolean).join(" ");
-    const superQuery = [name, city].filter(Boolean).join(" ");
-    const q = encodeURIComponent(destination);
-    const qTa = encodeURIComponent(`${name} hostel ${city}`.trim());
-    const links = [
-      {
-        cls: "hw-sb-btn-google",
-        icon: "G",
-        label: "Google",
-        href: `https://www.google.com/search?q=${q}`
+    const country = parsedCountry || getCountry(city);
+    const pageParams = new URLSearchParams(window.location.search);
+    const guests = Number.parseInt(pageParams.get("guests") ?? "1", 10);
+    const getLinks = (propertyName, propertyCity, propertyCountry) => {
+      return buildHotelSearchLinks({
+        source: "hostelworld",
+        propertyName,
+        city: propertyCity,
+        country: propertyCountry,
+        checkin: pageParams.get("from") ?? undefined,
+        checkout: pageParams.get("to") ?? undefined,
+        guests: Number.isFinite(guests) ? guests : 1
+      });
+    };
+    const linkMeta = new Map([
+      ["Google", { cls: "hw-sb-btn-google", icon: "G" }],
+      ["Travel", { cls: "hw-sb-btn-travel", icon: "Tr" }],
+      ["Maps", { cls: "hw-sb-btn-maps", icon: "M" }],
+      ["Booking", { cls: "hw-sb-btn-booking", icon: "B" }],
+      ["Super", { cls: "hw-sb-btn-super", icon: "S" }],
+      ["TripAdvisor", { cls: "hw-sb-btn-tripadv", icon: "T" }]
+    ]);
+    const orderedLinks = ["google", "google-travel", "google-maps", "booking", "super", "tripadvisor"].map((service) => getLinks(name, city, country).find((link) => link.service === service)).filter((link) => Boolean(link));
+    const bar = renderHotelSearchBar({
+      anchor: document.body,
+      barId: SEARCH_BAR_ID,
+      getLinkClassName: (link) => {
+        const meta = linkMeta.get(link.label);
+        return meta ? `hw-sb-btn ${meta.cls}` : "hw-sb-btn";
       },
-      {
-        cls: "hw-sb-btn-maps",
-        icon: "M",
-        label: "Maps",
-        href: `https://www.google.com/maps/search/${q}`
-      },
-      {
-        cls: "hw-sb-btn-booking",
-        icon: "B",
-        label: "Booking",
-        href: `https://www.booking.com/searchresults.html?ss=${q}`
-      },
-      {
-        cls: "hw-sb-btn-super",
-        icon: "S",
-        label: "Super",
-        href: buildSuperUrl(destination, superQuery, name, city, country)
-      },
-      {
-        cls: "hw-sb-btn-tripadv",
-        icon: "T",
-        label: "TripAdvisor",
-        href: `https://www.tripadvisor.com/Search?q=${qTa}`
+      links: orderedLinks,
+      renderLinkContent: (link, anchorEl) => {
+        const meta = linkMeta.get(link.label);
+        anchorEl.innerHTML = `<span>${meta?.icon ?? ""}</span>${link.label}`;
+        anchorEl.title = `${link.label}: ${name}, ${city}`;
       }
-    ];
-    const bar = document.createElement("div");
-    bar.id = SEARCH_BAR_ID;
-    links.forEach(({ cls, icon, label, href }) => {
-      const a = document.createElement("a");
-      a.className = `hw-sb-btn ${cls}`;
-      a.href = href;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.title = `${label}: ${name}, ${city}`;
-      a.innerHTML = `<span>${icon}</span>${label}`;
-      bar.appendChild(a);
     });
-    document.body.appendChild(bar);
+    if (!bar)
+      return;
+    const superLink = bar.querySelector(".hw-sb-btn-super");
+    if (!superLink || superLink.dataset.hwSuperRefreshBound === "true")
+      return;
+    const refreshHref = () => {
+      const liveDetails = getPropertyDetails();
+      const liveCountry = liveDetails.country || getCountry(liveDetails.city);
+      const liveLinks = getLinks(liveDetails.name, liveDetails.city, liveCountry);
+      superLink.href = liveLinks.find((link) => link.service === "super")?.href ?? "#";
+      superLink.title = `Super: ${liveDetails.name}, ${liveDetails.city}`;
+    };
+    superLink.dataset.hwSuperRefreshBound = "true";
+    refreshHref();
+    superLink.addEventListener("mouseenter", refreshHref);
+    superLink.addEventListener("focus", refreshHref);
+    superLink.addEventListener("click", refreshHref);
   };
   var isDetailPage = () => /\/pwa\/hosteldetails\.php\//.test(window.location.pathname);
   var hwInit = () => {
@@ -722,29 +1117,13 @@
       loadAllReviews(propId);
     }
   };
-  var watchSPA = () => {
-    let lastUrl = location.href;
-    const onNav = () => {
-      const url = location.href;
-      if (url === lastUrl)
-        return;
-      lastUrl = url;
+  var hwBootstrap = () => {
+    watchLocationChange(() => {
       document.getElementById(BTN_ID)?.remove();
       document.getElementById(PANEL_ID)?.remove();
       document.getElementById(SEARCH_BAR_ID)?.remove();
-      setTimeout(hwInit, 600);
-    };
-    for (const fn of ["pushState", "replaceState"]) {
-      const orig = history[fn].bind(history);
-      history[fn] = function(...args) {
-        orig(...args);
-        onNav();
-      };
-    }
-    window.addEventListener("popstate", onNav);
-  };
-  var hwBootstrap = () => {
-    watchSPA();
+      hwInit();
+    }, { debounceMs: 600 });
     hwInit();
   };
   if (document.body) {

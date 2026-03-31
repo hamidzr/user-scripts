@@ -15,10 +15,444 @@
 'use strict';
 (() => {
 
+  // src/lib/dom.ts
+  var injectCSS = (id, css) => {
+    let style = document.getElementById(id);
+    if (style) {
+      style.textContent = css;
+      return style;
+    }
+    style = document.createElement("style");
+    style.id = id;
+    style.textContent = css;
+    document.head.appendChild(style);
+    return style;
+  };
+
+  // src/lib/dom-observe.ts
+  var DEFAULT_INIT = {
+    childList: true,
+    subtree: true
+  };
+  var observeDomChanges = (run, opts) => {
+    let timer = null;
+    let disconnectTimer = null;
+    let currentTarget = opts?.root ?? null;
+    let currentInit = opts?.observerInit ?? DEFAULT_INIT;
+    const disconnect = () => {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      if (disconnectTimer) {
+        window.clearTimeout(disconnectTimer);
+        disconnectTimer = null;
+      }
+      observer.disconnect();
+    };
+    const refreshDisconnectTimer = () => {
+      if (disconnectTimer)
+        window.clearTimeout(disconnectTimer);
+      if (!opts?.disconnectAfterMs)
+        return;
+      disconnectTimer = window.setTimeout(() => {
+        disconnect();
+      }, opts.disconnectAfterMs);
+    };
+    const scheduleRun = () => {
+      if (timer)
+        window.clearTimeout(timer);
+      const debounceMs = opts?.debounceMs ?? 0;
+      if (debounceMs <= 0) {
+        run();
+        refreshDisconnectTimer();
+        return;
+      }
+      timer = window.setTimeout(() => {
+        timer = null;
+        run();
+        refreshDisconnectTimer();
+      }, debounceMs);
+    };
+    const observer = new MutationObserver((mutations) => {
+      if (opts?.shouldRun && !opts.shouldRun(mutations))
+        return;
+      scheduleRun();
+    });
+    const observe = (target, options) => {
+      const nextTarget = target ?? currentTarget ?? document.body;
+      if (!nextTarget)
+        return;
+      currentTarget = nextTarget;
+      currentInit = options ?? currentInit;
+      observer.disconnect();
+      observer.observe(nextTarget, currentInit);
+      refreshDisconnectTimer();
+    };
+    if (opts?.runImmediately)
+      scheduleRun();
+    return {
+      disconnect,
+      observe
+    };
+  };
+
+  // src/lib/hotel-search.ts
+  var cleanPart = (value) => {
+    return (value ?? "").replace(/\s+/g, " ").trim();
+  };
+  var uniqueParts = (parts) => {
+    const seen = new Set;
+    const out = [];
+    parts.forEach((part) => {
+      const cleaned = cleanPart(part);
+      const key = cleaned.toLowerCase();
+      if (!cleaned || seen.has(key))
+        return;
+      seen.add(key);
+      out.push(cleaned);
+    });
+    return out;
+  };
+  var joinParts = (parts, sep) => {
+    return uniqueParts(parts).join(sep);
+  };
+  var getFallbackDestination = (ctx) => {
+    return joinParts([ctx.city, ctx.country], ", ");
+  };
+  var getPreferredSearchLocationText = (ctx) => {
+    const city = cleanPart(ctx.city);
+    if (city) {
+      return joinParts([city, ctx.country], ", ");
+    }
+    return getBestLocationText(ctx);
+  };
+  var normalizeLocationPart = (value) => {
+    return cleanPart(value).toLowerCase();
+  };
+  var isAddressCoveringLocationPart = (address, part) => {
+    const normalizedAddress = normalizeLocationPart(address);
+    const normalizedPart = normalizeLocationPart(part);
+    if (!normalizedAddress || !normalizedPart)
+      return false;
+    return normalizedAddress.split(",").map((segment) => segment.trim()).some((segment) => segment === normalizedPart || segment.endsWith(` ${normalizedPart}`));
+  };
+  var getBestLocationText = (ctx) => {
+    const locationParts = [];
+    const address = cleanPart(ctx.address);
+    if (address)
+      locationParts.push(address);
+    [ctx.neighborhood, ctx.city, ctx.country].forEach((part) => {
+      const cleaned = cleanPart(part);
+      if (!cleaned || isAddressCoveringLocationPart(address, cleaned))
+        return;
+      locationParts.push(cleaned);
+    });
+    return locationParts.join(", ");
+  };
+  var getPrimarySearchText = (ctx) => {
+    return joinParts([ctx.propertyName, getPreferredSearchLocationText(ctx)], ", ");
+  };
+  var getDestinationSearchText = (ctx) => {
+    return joinParts([ctx.propertyName, ctx.city, ctx.country], " ");
+  };
+  var getGoogleMapsText = (ctx) => {
+    if (Number.isFinite(ctx.lat) && Number.isFinite(ctx.lng)) {
+      return `${ctx.lat},${ctx.lng}`;
+    }
+    return getPrimarySearchText(ctx) || getDestinationSearchText(ctx) || getFallbackDestination(ctx);
+  };
+  var parseTravelDate = (value) => {
+    const match = /^(?<year>\d{4})-(?<month>\d{2})-(?<day>\d{2})$/.exec(value ?? "");
+    if (!match?.groups)
+      return null;
+    const year = Number.parseInt(match.groups.year, 10);
+    const month = Number.parseInt(match.groups.month, 10);
+    const day = Number.parseInt(match.groups.day, 10);
+    if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day))
+      return null;
+    const utcMs = Date.UTC(year, month - 1, day);
+    const roundTrip = new Date(utcMs);
+    if (roundTrip.getUTCFullYear() !== year || roundTrip.getUTCMonth() !== month - 1 || roundTrip.getUTCDate() !== day) {
+      return null;
+    }
+    return { year, month, day, utcMs };
+  };
+  var getGoogleTravelDateRange = (ctx) => {
+    const checkin = parseTravelDate(ctx.checkin);
+    const checkout = parseTravelDate(ctx.checkout);
+    if (!checkin || !checkout)
+      return null;
+    const nights = Math.round((checkout.utcMs - checkin.utcMs) / 86400000);
+    if (!Number.isInteger(nights) || nights <= 0)
+      return null;
+    return { checkin, checkout, nights };
+  };
+  var encodeVarint = (value) => {
+    const bytes = [];
+    let next = value;
+    while (next >= 128) {
+      bytes.push(next & 127 | 128);
+      next >>= 7;
+    }
+    bytes.push(next);
+    return bytes;
+  };
+  var encodeFieldVarint = (fieldNumber, value) => {
+    return [...encodeVarint(fieldNumber << 3 | 0), ...encodeVarint(value)];
+  };
+  var encodeFieldBytes = (fieldNumber, payload) => {
+    return [...encodeVarint(fieldNumber << 3 | 2), ...encodeVarint(payload.length), ...payload];
+  };
+  var encodeTravelDateMessage = (date) => {
+    return [
+      ...encodeFieldVarint(1, date.year),
+      ...encodeFieldVarint(2, date.month),
+      ...encodeFieldVarint(3, date.day)
+    ];
+  };
+  var encodeBase64Url = (bytes) => {
+    let binary = "";
+    bytes.forEach((byte) => {
+      binary += String.fromCharCode(byte);
+    });
+    return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+  };
+  var buildGoogleTravelTs = (ctx) => {
+    const dateRange = getGoogleTravelDateRange(ctx);
+    if (!dateRange)
+      return null;
+    const travelDates = [
+      ...encodeFieldBytes(1, encodeTravelDateMessage(dateRange.checkin)),
+      ...encodeFieldBytes(2, encodeTravelDateMessage(dateRange.checkout)),
+      ...encodeFieldVarint(3, dateRange.nights)
+    ];
+    const stayConfig = [
+      ...encodeFieldBytes(2, travelDates),
+      ...encodeFieldBytes(6, encodeFieldVarint(1, 1))
+    ];
+    const payload = [
+      ...encodeFieldBytes(1, encodeFieldBytes(3, [])),
+      ...encodeFieldBytes(2, stayConfig)
+    ];
+    return encodeBase64Url([...encodeFieldVarint(1, 1), ...encodeFieldBytes(3, payload)]);
+  };
+  var buildGoogleTravelUrl = (ctx) => {
+    const query = getPrimarySearchText(ctx) || getDestinationSearchText(ctx) || getFallbackDestination(ctx);
+    const params = new URLSearchParams({ q: query });
+    const travelTs = buildGoogleTravelTs(ctx);
+    if (travelTs) {
+      params.set("qs", "CAE4AA");
+      params.set("ts", travelTs);
+      params.set("ap", "MAE");
+    }
+    return `https://www.google.com/travel/search?${params.toString()}`;
+  };
+  var getTripAdvisorText = (ctx) => {
+    const base = getPrimarySearchText(ctx) || getDestinationSearchText(ctx);
+    if (!base)
+      return "";
+    if (/\b(hostel|hotel|resort|apartment|apartments|villa|inn|lodge|suite|suites)\b/i.test(base)) {
+      return base;
+    }
+    const hint = ctx.source === "hostelworld" ? "hostel" : "hotel";
+    return `${base} ${hint}`.trim();
+  };
+  var getPositiveGuestCount = (guests) => {
+    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.floor(guests) : 1;
+  };
+  var buildSuperSearchUrl = (ctx) => {
+    const destination = getDestinationSearchText(ctx) || getFallbackDestination(ctx);
+    const query = joinParts([ctx.propertyName, ctx.city], " ") || destination;
+    const params = new URLSearchParams({
+      destination,
+      super_lookup: "1",
+      super_query: query,
+      super_name: cleanPart(ctx.propertyName),
+      super_city: cleanPart(ctx.city),
+      super_country: cleanPart(ctx.country),
+      num_adults: String(getPositiveGuestCount(ctx.guests)),
+      children: "[]",
+      expand_params: "false"
+    });
+    if (ctx.checkin)
+      params.set("checkin_at", ctx.checkin);
+    if (ctx.checkout)
+      params.set("checkout_at", ctx.checkout);
+    return `https://www.super.com/home/travel?${params.toString()}`;
+  };
+  var buildHotelSearchLinks = (ctx) => {
+    const primary = getPrimarySearchText(ctx) || getDestinationSearchText(ctx);
+    const maps = getGoogleMapsText(ctx);
+    const tripAdvisor = getTripAdvisorText(ctx) || primary;
+    const googleTravel = buildGoogleTravelUrl(ctx);
+    const encodedPrimary = encodeURIComponent(primary);
+    const encodedMaps = encodeURIComponent(maps);
+    const encodedTripAdvisor = encodeURIComponent(tripAdvisor);
+    const propertyLabel = cleanPart(ctx.propertyName) || cleanPart(ctx.city) || "property";
+    return [
+      {
+        service: "google",
+        label: "Google",
+        href: `https://www.google.com/search?q=${encodedPrimary}`,
+        title: `Search Google: ${propertyLabel}`
+      },
+      {
+        service: "google-travel",
+        label: "Travel",
+        href: googleTravel,
+        title: `Search Google Travel: ${propertyLabel}`
+      },
+      {
+        service: "google-maps",
+        label: "Maps",
+        href: `https://www.google.com/maps/search/?api=1&query=${encodedMaps}`,
+        title: `Open in Google Maps: ${propertyLabel}`
+      },
+      {
+        service: "booking",
+        label: "Booking",
+        href: `https://www.booking.com/searchresults.html?ss=${encodedPrimary}`,
+        title: `Search Booking.com: ${propertyLabel}`
+      },
+      {
+        service: "tripadvisor",
+        label: "TripAdvisor",
+        href: `https://www.tripadvisor.com/Search?q=${encodedTripAdvisor}`,
+        title: `Search TripAdvisor: ${propertyLabel}`
+      },
+      {
+        service: "super",
+        label: "Super",
+        href: buildSuperSearchUrl(ctx),
+        title: `Search Super.com: ${propertyLabel}`
+      }
+    ];
+  };
+
+  // src/lib/hotel-search-ui.ts
+  var buildSignature = (links, getLinkText) => {
+    return links.map((link) => `${getLinkText(link)}:${link.href}`).join("|");
+  };
+  var renderHotelSearchBar = (opts) => {
+    const existing = document.getElementById(opts.barId);
+    const placement = opts.placement ?? "append";
+    const getLinkText = opts.getLinkText ?? ((link) => link.label);
+    if (!opts.anchor || !opts.links.length) {
+      existing?.remove();
+      return null;
+    }
+    let bar = existing;
+    if (!bar) {
+      bar = document.createElement("div");
+      bar.id = opts.barId;
+    }
+    if (opts.barClassName)
+      bar.className = opts.barClassName;
+    if (opts.barAttrs) {
+      Object.entries(opts.barAttrs).forEach(([key, value]) => {
+        bar.setAttribute(key, value);
+      });
+    }
+    const signature = buildSignature(opts.links, getLinkText);
+    const expectedParent = placement === "append" ? opts.anchor : opts.anchor.parentElement;
+    const isMounted = placement === "append" ? bar.parentElement === opts.anchor : bar.previousElementSibling === opts.anchor && bar.parentElement === expectedParent;
+    if (bar.dataset.signature === signature && isMounted) {
+      return bar;
+    }
+    bar.textContent = "";
+    bar.dataset.signature = signature;
+    opts.links.forEach((link) => {
+      const a = document.createElement("a");
+      a.href = link.href;
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+      a.title = link.title;
+      const linkClassName = opts.getLinkClassName?.(link);
+      if (linkClassName)
+        a.className = linkClassName;
+      if (opts.renderLinkContent) {
+        opts.renderLinkContent(link, a);
+      } else {
+        a.textContent = getLinkText(link);
+      }
+      bar.appendChild(a);
+    });
+    if (placement === "append") {
+      if (bar.parentElement !== opts.anchor)
+        opts.anchor.appendChild(bar);
+      return bar;
+    }
+    if (!opts.anchor.parentElement) {
+      bar.remove();
+      return null;
+    }
+    if (bar.previousElementSibling !== opts.anchor || bar.parentElement !== opts.anchor.parentElement) {
+      opts.anchor.parentElement.insertBefore(bar, opts.anchor.nextSibling);
+    }
+    return bar;
+  };
+
   // src/super.com/super-com.user.ts
+  var SUPER_LINKS_STYLE_ID = "sc-search-links-style";
+  var SUPER_LINKS_BAR_ID = "sc-search-links-bar";
+  var SUPER_LINKS_CSS = `
+  #${SUPER_LINKS_BAR_ID} {
+    display: flex;
+    gap: 8px;
+    margin-top: 10px;
+    flex-wrap: wrap;
+  }
+
+  #${SUPER_LINKS_BAR_ID} a {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1.5px solid #e0e0e0;
+    background: #fff;
+    color: #333;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+    white-space: nowrap;
+  }
+
+  #${SUPER_LINKS_BAR_ID} a:hover {
+    border-color: #e91e8c;
+    color: #e91e8c;
+    background: #fff0f7;
+  }
+`;
   var priceMap = {};
   var lookupStarted = false;
   var norm = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+  var getTokens = (s) => norm(s).split(/\s+/).filter((token) => token.length >= 3);
+  var countTokenOverlap = (left, right) => {
+    const leftTokens = new Set(getTokens(left));
+    const rightTokens = new Set(getTokens(right));
+    let count = 0;
+    leftTokens.forEach((token) => {
+      if (rightTokens.has(token))
+        count++;
+    });
+    return count;
+  };
+  var hasStrongHotelNameMatch = (expectedName, candidateName) => {
+    const expected = norm(expectedName);
+    const candidate = norm(candidateName);
+    if (!expected || !candidate)
+      return false;
+    if (expected === candidate || expected.includes(candidate) || candidate.includes(expected)) {
+      return true;
+    }
+    const overlap = countTokenOverlap(expected, candidate);
+    const expectedTokenCount = getTokens(expected).length;
+    return overlap >= 2 && expectedTokenCount > 0 && overlap >= expectedTokenCount - 1;
+  };
   var slugify = (s) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   var getCookie = (name) => {
     const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
@@ -65,17 +499,20 @@
         return;
       const itemName = norm(item.name ?? "");
       const itemCity = norm(item.city ?? "");
+      const strongNameMatch = hasStrongHotelNameMatch(name, itemName);
       let score = 0;
-      if (name && (itemName === name || itemName.includes(name) || name.includes(itemName)))
-        score += 100;
+      if (strongNameMatch)
+        score += 120;
       if (city && (itemCity === city || itemCity.includes(city) || city.includes(itemCity)))
-        score += 40;
+        score += 50;
       if (country && destination.includes(country))
         score += 5;
       if (destination && destination.includes(itemName))
         score += 20;
       if (destination && destination.includes(itemCity))
         score += 10;
+      if (name && !strongNameMatch)
+        score -= 60;
       if (score > bestScore) {
         best = item;
         bestScore = score;
@@ -101,7 +538,7 @@
   var findLookupRegion = async (query, name, city, country) => {
     const queryItems = await queryOmnisearch(query);
     const hotel = pickLookupHotel(queryItems, { name, city, country, destination: query });
-    if (hotel.item?.hotel_id && hotel.score >= 80)
+    if (hotel.item?.hotel_id && hotel.score >= 120)
       return { hotel: hotel.item, region: null };
     const directRegion = pickCountryMatchedRegion(queryItems, city, country);
     if (directRegion)
@@ -179,31 +616,21 @@
     });
     refreshMapPins();
   };
-  var superObserver = new MutationObserver((mutations) => {
-    let hasNew = false;
-    for (const m of mutations) {
-      if (m.addedNodes.length) {
-        hasNew = true;
-        break;
-      }
-    }
-    if (!hasNew)
-      return;
+  var runEnhancements = () => {
     enhanceListCards();
     refreshMapPins();
     enhanceDetailPage();
     enhanceDetailPrices();
     compactDetailPriceCards();
     maybeInjectMapButton();
-  });
+  };
   var startObserver = () => {
+    const superObserver = observeDomChanges(runEnhancements, {
+      root: document.body,
+      shouldRun: (mutations) => mutations.some((mutation) => mutation.addedNodes.length > 0)
+    });
     superObserver.observe(document.body, { childList: true, subtree: true });
-    enhanceListCards();
-    refreshMapPins();
-    enhanceDetailPage();
-    enhanceDetailPrices();
-    compactDetailPriceCards();
-    maybeInjectMapButton();
+    runEnhancements();
   };
   if (document.body) {
     maybeResolveHostelworldLookup();
@@ -339,6 +766,7 @@
     if (!nameEl)
       return;
     const hotelName = nameEl.textContent?.trim() ?? "";
+    const params = new URLSearchParams(location.search);
     let address = "";
     document.querySelectorAll('[data-disable-translation="true"]').forEach((el) => {
       const t = el.textContent?.trim() ?? "";
@@ -352,71 +780,29 @@
     if (!viewLocRow)
       return;
     detailEnhanced = true;
-    const query = encodeURIComponent(`${hotelName} ${address}`.trim());
-    const buttons = [
-      {
-        icon: "\uD83D\uDD0D",
-        label: "Google",
-        href: `https://www.google.com/search?q=${query}`,
-        title: `Search Google: ${hotelName}`
+    injectCSS(SUPER_LINKS_STYLE_ID, SUPER_LINKS_CSS);
+    const buttons = buildHotelSearchLinks({
+      source: "super",
+      propertyName: hotelName,
+      city: "",
+      address,
+      checkin: params.get("checkin_at") ?? undefined,
+      checkout: params.get("checkout_at") ?? undefined,
+      guests: Number.parseInt(params.get("num_adults") ?? "1", 10)
+    }).filter((link) => link.service !== "super").map((link) => ({
+      ...link,
+      icon: link.service === "google" ? "\uD83D\uDD0D" : link.service === "google-travel" ? "\uD83D\uDECF" : link.service === "google-maps" ? "\uD83D\uDCCD" : link.service === "booking" ? "\uD83C\uDFE8" : "⭐"
+    }));
+    renderHotelSearchBar({
+      anchor: viewLocRow,
+      barId: SUPER_LINKS_BAR_ID,
+      barAttrs: { "data-sc-enhanced": "1" },
+      getLinkText: (link) => {
+        const match = buttons.find((button) => button.href === link.href && button.service === link.service);
+        return match ? `${match.icon} ${match.label}` : link.label;
       },
-      {
-        icon: "\uD83D\uDCCD",
-        label: "Maps",
-        href: `https://www.google.com/maps/search/${query}`,
-        title: `Open in Google Maps: ${hotelName}`
-      },
-      {
-        icon: "\uD83C\uDFE8",
-        label: "Booking",
-        href: `https://www.booking.com/searchresults.html?ss=${query}`,
-        title: `Search Booking.com: ${hotelName}`
-      },
-      {
-        icon: "⭐",
-        label: "TripAdvisor",
-        href: `https://www.tripadvisor.com/Search?q=${query}`,
-        title: `Search TripAdvisor: ${hotelName}`
-      }
-    ];
-    const bar = document.createElement("div");
-    bar.dataset.scEnhanced = "1";
-    Object.assign(bar.style, { display: "flex", gap: "8px", marginTop: "10px", flexWrap: "wrap" });
-    buttons.forEach(({ icon, label, href, title: btnTitle }) => {
-      const a = document.createElement("a");
-      a.href = href;
-      a.target = "_blank";
-      a.rel = "noopener noreferrer";
-      a.title = btnTitle;
-      a.textContent = `${icon} ${label}`;
-      Object.assign(a.style, {
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        padding: "4px 10px",
-        borderRadius: "20px",
-        border: "1.5px solid #e0e0e0",
-        background: "#fff",
-        color: "#333",
-        fontSize: "0.78rem",
-        fontWeight: "600",
-        textDecoration: "none",
-        cursor: "pointer",
-        transition: "border-color 0.15s, background 0.15s",
-        whiteSpace: "nowrap"
-      });
-      a.addEventListener("mouseenter", () => {
-        a.style.borderColor = "#e91e8c";
-        a.style.color = "#e91e8c";
-        a.style.background = "#fff0f7";
-      });
-      a.addEventListener("mouseleave", () => {
-        a.style.borderColor = "#e0e0e0";
-        a.style.color = "#333";
-        a.style.background = "#fff";
-      });
-      bar.appendChild(a);
+      links: buttons,
+      placement: "after"
     });
-    viewLocRow.parentElement?.insertBefore(bar, viewLocRow.nextSibling);
   };
 })();
