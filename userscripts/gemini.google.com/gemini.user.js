@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
-// @version              1.3.0
+// @version              1.3.1
 // ==/UserScript==
 
 'use strict';
@@ -186,9 +186,21 @@
       const current = modeBtn.textContent?.trim();
       if (current === "Pro")
         return;
+      const editor = document.querySelector(EDITOR_SEL);
+      const savedHTML = editor?.innerHTML ?? "";
+      const hadFocus = document.activeElement === editor;
       modeBtn.click();
       const proOption = await waitForEl(PRO_OPTION_SEL, 2000);
       proOption.click();
+      if (editor && savedHTML) {
+        requestAnimationFrame(() => {
+          if (!editor.textContent?.trim()) {
+            editor.innerHTML = savedHTML;
+          }
+          if (hadFocus)
+            focusEnd(editor);
+        });
+      }
     } catch {}
   };
   window.addEventListener("focus", focusEditor);
