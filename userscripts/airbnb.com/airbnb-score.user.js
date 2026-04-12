@@ -8,13 +8,61 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
-// @version              1.11.0
+// @version              1.12.0
 // ==/UserScript==
 
 'use strict';
 (() => {
 
   // src/lib/dom.ts
+  var waitForEl = (selector, timeoutMs = 5000) => {
+    return new Promise((resolve, reject) => {
+      const el = document.querySelector(selector);
+      if (el)
+        return resolve(el);
+      const endTime = Date.now() + timeoutMs;
+      const observer = new MutationObserver(() => {
+        const el2 = document.querySelector(selector);
+        if (el2) {
+          observer.disconnect();
+          resolve(el2);
+        } else if (Date.now() > endTime) {
+          observer.disconnect();
+          reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => {
+        observer.disconnect();
+        const el2 = document.querySelector(selector);
+        if (el2)
+          resolve(el2);
+        else
+          reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+  };
+  var POLL_INTERVAL = 100;
+  var pollUntil = (fn, timeoutMs) => {
+    const endTime = Date.now() + timeoutMs;
+    return new Promise((resolve, reject) => {
+      const check = async () => {
+        try {
+          const result = await fn();
+          if (result !== null && result !== undefined) {
+            resolve(result);
+          } else if (Date.now() > endTime) {
+            reject(new Error("timeout"));
+          } else {
+            setTimeout(check, POLL_INTERVAL);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      };
+      check();
+    });
+  };
   var injectCSS = (id, css) => {
     let style = document.getElementById(id);
     if (style) {
@@ -26,6 +74,12 @@
     style.textContent = css;
     document.head.appendChild(style);
     return style;
+  };
+  var simClick = (el) => {
+    el.click();
+    el.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    el.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
   };
 
   // src/lib/dom-observe.ts
@@ -133,6 +187,9 @@
         history.pushState = pushState;
         history.replaceState = replaceState;
         window.removeEventListener("popstate", controller.onPopState);
+        if ("navigation" in window) {
+          window.navigation.removeEventListener("navigatesuccess", controller.onPopState);
+        }
         delete window[KEY];
       },
       onPopState: () => {
@@ -148,6 +205,9 @@
       controller.notify();
     };
     window.addEventListener("popstate", controller.onPopState);
+    if ("navigation" in window) {
+      window.navigation.addEventListener("navigatesuccess", controller.onPopState);
+    }
     window[KEY] = controller;
     return controller;
   };
@@ -167,6 +227,84 @@
       if (controller.listeners.size === 0)
         controller.restore();
     };
+  };
+
+  // src/airbnb.com/airbnb-search-resolver.ts
+  var LOCATION_BUTTON_SELECTOR = '[data-testid="little-search-location"]';
+  var LOCATION_INPUT_SELECTOR = 'input[name="query"][data-testid="structured-search-input-field-query"]';
+  var LOCATION_OPTION_SELECTOR = '[role="option"][data-testid^="option-"]';
+  var SEARCH_BUTTON_SELECTOR = '[data-testid="structured-search-input-search-button"]';
+  var ATTEMPT_PREFIX = "ab-score-direct-search-resolve:";
+  var sleep = (ms) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+  var normalizeQueryValue = (value) => value?.trim() ?? "";
+  var hasStructuredLocationParams = (url) => {
+    return ["search_type", "location_bb", "acp_id"].some((key) => normalizeQueryValue(url.searchParams.get(key)));
+  };
+  var getAttemptKey = (url) => {
+    const copy = new URL(url.toString());
+    copy.searchParams.delete("cursor");
+    copy.searchParams.delete("pagination_search");
+    return `${ATTEMPT_PREFIX}${copy.pathname}?${copy.searchParams.toString()}`;
+  };
+  var hasAttemptedResolution = (url) => {
+    return window.sessionStorage.getItem(getAttemptKey(url)) === "1";
+  };
+  var markAttemptedResolution = (url) => {
+    window.sessionStorage.setItem(getAttemptKey(url), "1");
+  };
+  var getFirstLocationOption = () => {
+    const options = Array.from(document.querySelectorAll(LOCATION_OPTION_SELECTOR));
+    return options.find((option) => option.offsetParent !== null) ?? options[0] ?? null;
+  };
+  var shouldResolveDirectSearchLocation = (url) => {
+    if (!/^\/s\/.+/.test(url.pathname))
+      return false;
+    if (!normalizeQueryValue(url.searchParams.get("query")))
+      return false;
+    if (hasStructuredLocationParams(url))
+      return false;
+    return true;
+  };
+  var openLocationSearch = async () => {
+    if (getFirstLocationOption())
+      return;
+    await pollUntil(async () => {
+      const existingInput = document.querySelector(LOCATION_INPUT_SELECTOR);
+      if (existingInput)
+        return existingInput;
+      const locationButton = document.querySelector(LOCATION_BUTTON_SELECTOR);
+      if (!locationButton)
+        return null;
+      simClick(locationButton);
+      await sleep(200);
+      return document.querySelector(LOCATION_INPUT_SELECTOR);
+    }, 7000);
+    await pollUntil(() => getFirstLocationOption(), 7000);
+  };
+  var submitResolvedLocation = async () => {
+    const option = await pollUntil(() => getFirstLocationOption(), 7000);
+    simClick(option);
+    await sleep(200);
+    const searchButton = document.querySelector(SEARCH_BUTTON_SELECTOR) ?? await waitForEl(SEARCH_BUTTON_SELECTOR, 5000);
+    simClick(searchButton);
+  };
+  var maybeResolveDirectSearchLocation = async () => {
+    const url = new URL(window.location.href);
+    if (!shouldResolveDirectSearchLocation(url))
+      return false;
+    if (hasAttemptedResolution(url))
+      return false;
+    markAttemptedResolution(url);
+    try {
+      await openLocationSearch();
+      await submitResolvedLocation();
+      return true;
+    } catch (error) {
+      console.warn("[Airbnb Score] direct search resolution failed", error);
+      return false;
+    }
   };
 
   // src/airbnb.com/airbnb-score.css
@@ -2201,9 +2339,11 @@ body.ab-agg-open {
       bar.remove();
     closeAggregatedOverlay();
     invalidateAggCache();
+    maybeResolveDirectSearchLocation();
   }
   var container = document.querySelector('[data-testid="browse-list-and-map-container"]') || document.querySelector('[data-testid="homes-search-result"]') || document.body;
   watchLocationChange(onNavigation);
+  maybeResolveDirectSearchLocation();
   var observer = observeDomChanges(processCards, {
     root: container,
     debounceMs: 600

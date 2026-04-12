@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
-// @version              1.3.1
+// @version              1.4.0
 // ==/UserScript==
 
 'use strict';
@@ -40,6 +40,27 @@
         else
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
       }, timeoutMs);
+    });
+  };
+  var POLL_INTERVAL = 100;
+  var pollUntil = (fn, timeoutMs) => {
+    const endTime = Date.now() + timeoutMs;
+    return new Promise((resolve, reject) => {
+      const check = async () => {
+        try {
+          const result = await fn();
+          if (result !== null && result !== undefined) {
+            resolve(result);
+          } else if (Date.now() > endTime) {
+            reject(new Error("timeout"));
+          } else {
+            setTimeout(check, POLL_INTERVAL);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      };
+      check();
     });
   };
   var focusEnd = (el) => {
@@ -120,6 +141,9 @@
         history.pushState = pushState;
         history.replaceState = replaceState;
         window.removeEventListener("popstate", controller.onPopState);
+        if ("navigation" in window) {
+          window.navigation.removeEventListener("navigatesuccess", controller.onPopState);
+        }
         delete window[KEY];
       },
       onPopState: () => {
@@ -135,6 +159,9 @@
       controller.notify();
     };
     window.addEventListener("popstate", controller.onPopState);
+    if ("navigation" in window) {
+      window.navigation.addEventListener("navigatesuccess", controller.onPopState);
+    }
     window[KEY] = controller;
     return controller;
   };
@@ -182,7 +209,10 @@
     if (!isNewChat())
       return;
     try {
-      const modeBtn = await waitForEl(MODE_BTN_SEL, 5000);
+      const modeBtn = await pollUntil(() => {
+        const btn = document.querySelector(MODE_BTN_SEL);
+        return btn?.textContent?.trim() ? btn : null;
+      }, 5000);
       const current = modeBtn.textContent?.trim();
       if (current === "Pro")
         return;
@@ -190,7 +220,7 @@
       const savedHTML = editor?.innerHTML ?? "";
       const hadFocus = document.activeElement === editor;
       modeBtn.click();
-      const proOption = await waitForEl(PRO_OPTION_SEL, 2000);
+      const proOption = await waitForEl(PRO_OPTION_SEL, 3000);
       proOption.click();
       if (editor && savedHTML) {
         requestAnimationFrame(() => {

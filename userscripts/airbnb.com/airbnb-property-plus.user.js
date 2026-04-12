@@ -437,6 +437,9 @@
         history.pushState = pushState;
         history.replaceState = replaceState;
         window.removeEventListener("popstate", controller.onPopState);
+        if ("navigation" in window) {
+          window.navigation.removeEventListener("navigatesuccess", controller.onPopState);
+        }
         delete window[KEY];
       },
       onPopState: () => {
@@ -452,6 +455,9 @@
       controller.notify();
     };
     window.addEventListener("popstate", controller.onPopState);
+    if ("navigation" in window) {
+      window.navigation.addEventListener("navigatesuccess", controller.onPopState);
+    }
     window[KEY] = controller;
     return controller;
   };
