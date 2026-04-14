@@ -4,11 +4,11 @@
 // @description          Adds quick actions, message templates, and pricing helpers on Airbnb listing pages
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-property-plus.user.js
 // @grant                none
-// @match                https://www.airbnb.com/rooms/*
+// @match                https://www.airbnb.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-property-plus.user.js
-// @version              0.5.2
+// @version              0.5.3
 // ==/UserScript==
 
 'use strict';
@@ -2121,11 +2121,13 @@ Thanks!`;
     });
     observer.observe(document.body, { childList: true, subtree: true });
     watchLocationChange(() => {
+      removePageBoundUi();
       cachedListingMapPath = "";
       cachedListingMapData = null;
       cachedListingSearchPath = "";
       cachedListingSearchData = null;
       run();
+      window.setTimeout(run, 1200);
     }, { debounceMs: 300 });
     window.addEventListener("storage", (event) => {
       if (event.key !== VISIBILITY_KEY)

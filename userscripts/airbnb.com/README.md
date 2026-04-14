@@ -2,8 +2,8 @@
 
 This folder contains two public Airbnb userscripts:
 
-- `Airbnb Property Plus` for listing pages at `https://www.airbnb.com/rooms/*`
-- `Airbnb Listing Score` for search results at `https://www.airbnb.com/s/*`
+- `Airbnb Property Plus`, loaded site-wide and route-gated to listing pages
+- `Airbnb Listing Score`, loaded site-wide and route-gated to search result pages
 
 ## Airbnb Property Plus
 
@@ -30,6 +30,7 @@ Adds faster controls and better context on property pages.
   - stores templates in `localStorage`
 - inline derived nightly price next to Airbnb's total stay price copy
 - wider content layout on large screens
+- survives Airbnb SPA navigation because the userscript now loads across the whole site and reruns when the route changes
 
 ### Storage
 
@@ -61,6 +62,7 @@ Adds ranking, value scoring, and sorting controls on Airbnb search result grids.
 - `Combined Top 200` opens an aggregated overlay with merged listings, photos, and independent sort controls
 - removes the `Available for similar dates` result section before sorting so it does not pollute the ranking
 - reprocesses cards across Airbnb SPA navigation and lazy rendering
+- loads site-wide so search scoring still boots after in-app navigation from non-search pages
 
 ### Storage
 

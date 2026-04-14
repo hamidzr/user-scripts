@@ -4,11 +4,11 @@
 // @description          Wilson lower-bound + page-relative scoring with color-coded score pills, text dimming, sort controls, and all-pages loading
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
 // @grant                none
-// @match                https://www.airbnb.com/s/*
+// @match                https://www.airbnb.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
-// @version              1.12.0
+// @version              1.12.1
 // ==/UserScript==
 
 'use strict';
@@ -2330,24 +2330,69 @@ body.ab-agg-open {
   // src/airbnb.com/airbnb-score.user.ts
   var STYLE_ID = "ab-score-style";
   var SORT_BAR_ID2 = "ab-sort-bar";
+  var SEARCH_OBSERVER_INIT = {
+    childList: true,
+    subtree: true
+  };
   injectCSS(STYLE_ID, airbnb_score_default);
-  processCards();
-  setTimeout(processCards, 1500);
-  function onNavigation() {
+  var observedRoot = null;
+  var isSearchRoute = () => {
+    return /^\/s\/.+/.test(window.location.pathname);
+  };
+  var getSearchContainer = () => {
+    return document.querySelector('[data-testid="browse-list-and-map-container"]') || document.querySelector('[data-testid="homes-search-result"]');
+  };
+  var resetSearchUi = () => {
     const bar = document.getElementById(SORT_BAR_ID2);
     if (bar)
       bar.remove();
     closeAggregatedOverlay();
     invalidateAggCache();
-    maybeResolveDirectSearchLocation();
-  }
-  var container = document.querySelector('[data-testid="browse-list-and-map-container"]') || document.querySelector('[data-testid="homes-search-result"]') || document.body;
-  watchLocationChange(onNavigation);
-  maybeResolveDirectSearchLocation();
-  var observer = observeDomChanges(processCards, {
-    root: container,
+  };
+  var observeSearchDom = (target) => {
+    if (observedRoot === target)
+      return;
+    observedRoot = target;
+    observer.observe(target, SEARCH_OBSERVER_INIT);
+    initGrid(observer, target);
+  };
+  var refreshObservation = () => {
+    if (!isSearchRoute()) {
+      observedRoot = null;
+      observer.disconnect();
+      initGrid(observer, document.body);
+      return;
+    }
+    observeSearchDom(getSearchContainer() ?? document.body);
+  };
+  var runScorePass = () => {
+    if (!isSearchRoute()) {
+      resetSearchUi();
+      return;
+    }
+    observeSearchDom(getSearchContainer() ?? document.body);
+    processCards();
+  };
+  var scheduleDeferredScorePass = () => {
+    window.setTimeout(runScorePass, 1500);
+  };
+  var observer = observeDomChanges(runScorePass, {
+    root: document.body,
     debounceMs: 600
   });
-  initGrid(observer, container);
-  observer.observe(container, { childList: true, subtree: true });
+  refreshObservation();
+  if (isSearchRoute()) {
+    runScorePass();
+    scheduleDeferredScorePass();
+    maybeResolveDirectSearchLocation();
+  }
+  watchLocationChange(() => {
+    resetSearchUi();
+    refreshObservation();
+    if (!isSearchRoute())
+      return;
+    runScorePass();
+    scheduleDeferredScorePass();
+    maybeResolveDirectSearchLocation();
+  }, { debounceMs: 300 });
 })();
