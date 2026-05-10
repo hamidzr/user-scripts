@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-property-plus.user.js
-// @version              0.5.3
+// @version              0.5.4
 // ==/UserScript==
 
 'use strict';
@@ -647,6 +647,16 @@
   cursor: default;
 }
 
+#ab-property-plus-actions:not(:hover):not(:focus-within):not(.is-dragging) {
+  gap: 0;
+  padding: 8px;
+}
+
+#ab-property-plus-actions:not(:hover):not(:focus-within):not(.is-dragging)
+  button:not(.ab-property-plus-drag-handle) {
+  display: none;
+}
+
 #ab-property-plus-map-panel {
   position: fixed;
   top: 140px;
@@ -735,6 +745,28 @@
 #ab-property-plus-map-panel .ab-property-plus-map-meta {
   font-size: 12px;
   color: #6b6b6b;
+}
+
+#ab-property-plus-map-panel:not(:hover):not(:focus-within):not(.is-dragging) {
+  width: auto;
+  gap: 0;
+  padding: 8px;
+  border-radius: 999px;
+}
+
+#ab-property-plus-map-panel:not(:hover):not(:focus-within):not(.is-dragging)
+  .ab-property-plus-map-topbar {
+  gap: 0;
+}
+
+#ab-property-plus-map-panel:not(:hover):not(:focus-within):not(.is-dragging)
+  .ab-property-plus-map-heading,
+#ab-property-plus-map-panel:not(:hover):not(:focus-within):not(.is-dragging)
+  .ab-property-plus-map-actions,
+#ab-property-plus-map-panel:not(:hover):not(:focus-within):not(.is-dragging)
+  .ab-property-plus-search-actions,
+#ab-property-plus-map-panel:not(:hover):not(:focus-within):not(.is-dragging) iframe {
+  display: none;
 }
 
 #ab-property-plus-templates {
@@ -848,19 +880,31 @@
 @media (max-width: 1000px) {
   #ab-property-plus-actions {
     right: 12px;
-    left: 12px;
+    left: auto;
     top: auto;
     bottom: 12px;
     justify-content: center;
     border-radius: 16px;
   }
 
+  #ab-property-plus-actions:hover,
+  #ab-property-plus-actions:focus-within,
+  #ab-property-plus-actions.is-dragging {
+    left: 12px;
+  }
+
   #ab-property-plus-map-panel {
     right: 12px;
-    left: 12px;
+    left: auto;
     top: auto;
     bottom: 84px;
     width: auto;
+  }
+
+  #ab-property-plus-map-panel:hover,
+  #ab-property-plus-map-panel:focus-within,
+  #ab-property-plus-map-panel.is-dragging {
+    left: 12px;
   }
 
   #ab-property-plus-templates {
