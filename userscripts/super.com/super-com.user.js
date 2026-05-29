@@ -25,7 +25,7 @@
     style = document.createElement("style");
     style.id = id;
     style.textContent = css;
-    document.head.appendChild(style);
+    (document.head ?? document.documentElement).appendChild(style);
     return style;
   };
 
@@ -584,12 +584,29 @@
         location.replace(`/travel/hotels/${hotel.hotel_id}?${params.toString()}`);
         return;
       }
-      const countryCode = getCountryCode(country);
-      const citySlug = slugify(region?.name ?? city);
-      if (region?.id && countryCode && citySlug) {
-        location.replace(`/travel/regions/${region.id}/cities/${countryCode}/${citySlug}-hotels?${params.toString()}`);
+      const cityName = region?.name ?? city ?? "";
+      const countryCode = getCountryCode(country) || getCountryCode(region?.country ?? "") || "us";
+      const citySlug = cityName ? slugify(cityName) : "hotels";
+      if (cityName) {
+        const regionId = region?.id == null ? "0" : String(region.id);
+        location.replace(`/travel/regions/${regionId}/cities/${countryCode}/${citySlug}-hotels?${params.toString()}`);
+        return;
       }
-    }).catch(() => {});
+      const destinationSlug = destination ? slugify(destination.split(",")[0] ?? "") : "";
+      const fallbackSlug = destinationSlug || "hotels";
+      location.replace(`/travel/regions/0/cities/${countryCode}/${fallbackSlug}-hotels?${params.toString()}`);
+    }).catch(() => {
+      const fallbackParams = new URLSearchParams(location.search);
+      fallbackParams.delete("super_lookup");
+      fallbackParams.delete("super_query");
+      fallbackParams.delete("super_name");
+      fallbackParams.delete("super_city");
+      fallbackParams.delete("super_country");
+      const fallbackDestination = fallbackParams.get("destination") ?? "";
+      const fallbackSlug = fallbackDestination ? slugify(fallbackDestination.split(",")[0] ?? "") : "hotels";
+      const fallbackCountryCode = getCountryCode(country) || getCountryCode(fallbackParams.get("super_country") ?? "") || "us";
+      location.replace(`/travel/regions/0/cities/${fallbackCountryCode}/${fallbackSlug}-hotels?${fallbackParams.toString()}`);
+    });
   };
   var _fetch = window.fetch.bind(window);
   window.fetch = async function(...args) {

@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/notion.so/open-in-app.user.js
-// @version              0.1.0
+// @version              0.2.0
 // ==/UserScript==
 
 'use strict';
@@ -62,15 +62,21 @@
     "security",
     "changelog",
     "install",
+    "install-integration",
     "download",
     "invite",
-    "join"
+    "join",
+    "mcp"
   ]);
+  var OAUTH_PARAMS = ["client_id", "redirect_uri", "response_type", "code_challenge"];
   var SESSION_KEY = "notion-open-in-app:redirected";
+  var isOAuthFlow = (url) => OAUTH_PARAMS.some((p) => url.searchParams.has(p));
   var shouldRedirect = (url) => {
     if (url.searchParams.get("web") === "1")
       return false;
     if (url.hash === "#web")
+      return false;
+    if (isOAuthFlow(url))
       return false;
     const segs = url.pathname.split("/").filter(Boolean);
     if (segs.length === 0)

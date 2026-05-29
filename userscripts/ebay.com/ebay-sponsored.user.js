@@ -24,7 +24,7 @@
     style = document.createElement("style");
     style.id = id;
     style.textContent = css;
-    document.head.appendChild(style);
+    (document.head ?? document.documentElement).appendChild(style);
     return style;
   };
 

@@ -6,9 +6,9 @@
 // @grant                none
 // @match                https://www.airbnb.com/*
 // @namespace            https://latentbyte.com/products
-// @run-at               document-idle
+// @run-at               document-body
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
-// @version              1.12.1
+// @version              1.12.4
 // ==/UserScript==
 
 'use strict';
@@ -72,7 +72,7 @@
     style = document.createElement("style");
     style.id = id;
     style.textContent = css;
-    document.head.appendChild(style);
+    (document.head ?? document.documentElement).appendChild(style);
     return style;
   };
   var simClick = (el) => {
