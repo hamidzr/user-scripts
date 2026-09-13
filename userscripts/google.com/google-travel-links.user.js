@@ -123,10 +123,11 @@
     };
   };
 
+  // src/lib/text.ts
+  var normalizeWhitespace = (value) => (value ?? "").replace(/\s+/g, " ").trim();
+
   // src/lib/hotel-search.ts
-  var cleanPart = (value) => {
-    return (value ?? "").replace(/\s+/g, " ").trim();
-  };
+  var cleanPart = (value) => normalizeWhitespace(value);
   var uniqueParts = (parts) => {
     const seen = new Set;
     const out = [];
@@ -197,8 +198,9 @@
     const day = Number.parseInt(match.groups.day, 10);
     if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day))
       return null;
-    const utcMs = Date.UTC(year, month - 1, day);
-    const roundTrip = new Date(utcMs);
+    const roundTrip = new Date(0);
+    roundTrip.setUTCFullYear(year, month - 1, day);
+    const utcMs = roundTrip.getTime();
     if (roundTrip.getUTCFullYear() !== year || roundTrip.getUTCMonth() !== month - 1 || roundTrip.getUTCDate() !== day) {
       return null;
     }
@@ -357,6 +359,57 @@
   };
 
   // src/lib/hotel-search-ui.ts
+  var buildHotelSearchBarCss = (barSelector, opts = {}) => {
+    const border = opts.border ?? "1px solid rgba(26, 26, 26, 0.14)";
+    const boxShadow = opts.boxShadow ? `box-shadow: ${opts.boxShadow};` : "";
+    const color = opts.color ?? "#1a1a1a";
+    const fontSize = opts.fontSize ?? "12px";
+    const fontWeight = opts.fontWeight ?? 700;
+    const gap = opts.gap ?? "8px";
+    const hoverBackground = opts.hoverBackground ?? "#f3f8ff";
+    const hoverBorder = opts.hoverBorder ?? "#006ce4";
+    const hoverColor = opts.hoverColor ?? "#006ce4";
+    const linkGap = opts.linkGap ?? "0";
+    const marginTop = opts.marginTop ?? "12px";
+    const minHeight = opts.minHeight ?? "34px";
+    const padding = opts.padding ?? "0 12px";
+    const transition = opts.transition ? `transition: ${opts.transition};` : "";
+    return `
+  ${barSelector} {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ${gap};
+    margin-top: ${marginTop};
+  }
+
+  ${barSelector} a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${linkGap};
+    min-height: ${minHeight};
+    padding: ${padding};
+    border-radius: 999px;
+    border: ${border};
+    background: #fff;
+    color: ${color};
+    font-size: ${fontSize};
+    font-weight: ${fontWeight};
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    ${boxShadow}
+    ${transition}
+  }
+
+  ${barSelector} a:hover {
+    border-color: ${hoverBorder};
+    color: ${hoverColor};
+    background: ${hoverBackground};
+  }
+`;
+  };
   var buildSignature = (links, getLinkText) => {
     return links.map((link) => `${getLinkText(link)}:${link.href}`).join("|");
   };
@@ -589,37 +642,15 @@
   // src/google.com/google-travel-links.user.ts
   var STYLE_ID = "google-travel-links-style";
   var BAR_ID = "google-travel-links-bar";
-  var CSS = `
-  #${BAR_ID} {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 10px;
-  }
-
-  #${BAR_ID} a {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: 0 12px;
-    border: 1px solid #dadce0;
-    border-radius: 999px;
-    background: #fff;
-    color: #202124;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-
-  #${BAR_ID} a:hover {
-    border-color: #1a73e8;
-    background: #f8fbff;
-    color: #1a73e8;
-  }
-`;
+  var CSS = buildHotelSearchBarCss(`#${BAR_ID}`, {
+    border: "1px solid #dadce0",
+    color: "#202124",
+    fontWeight: 600,
+    hoverBackground: "#f8fbff",
+    hoverBorder: "#1a73e8",
+    hoverColor: "#1a73e8",
+    marginTop: "10px"
+  });
   var LINK_ORDER = ["booking", "super"];
   var getPageHotelName = () => {
     const rawTitle = document.title;

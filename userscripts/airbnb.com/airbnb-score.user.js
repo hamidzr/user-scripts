@@ -6,9 +6,9 @@
 // @grant                none
 // @match                https://www.airbnb.com/*
 // @namespace            https://latentbyte.com/products
-// @run-at               document-body
+// @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
-// @version              1.12.4
+// @version              1.12.6
 // ==/UserScript==
 
 'use strict';
@@ -503,6 +503,38 @@ body.ab-agg-open {
   align-items: center;
 }
 
+.ab-agg-tabs {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.ab-agg-tab {
+  border: 1px solid #b0b0b0;
+  background: #fff;
+  color: #222;
+  border-radius: 999px;
+  padding: 6px 12px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ab-agg-tab:hover:not(:disabled) {
+  background: #f7f7f7;
+}
+
+.ab-agg-tab.ab-active {
+  background: #222;
+  border-color: #222;
+  color: #fff;
+}
+
+.ab-agg-tab:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .ab-agg-refresh {
   border: 1px solid #b0b0b0;
   background: #fff;
@@ -554,6 +586,29 @@ body.ab-agg-open {
   font-family: inherit;
 }
 
+.ab-agg-map-hint {
+  color: #717171;
+  margin-left: 4px;
+  white-space: nowrap;
+}
+
+.ab-agg-map-zoom-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #717171;
+  white-space: nowrap;
+}
+
+.ab-agg-map-zoom-ctrl input {
+  width: 52px;
+  padding: 4px 6px;
+  border: 1px solid #b0b0b0;
+  border-radius: 8px;
+  color: #222;
+  font: inherit;
+}
+
 .ab-agg-cols-ctrl {
   display: flex;
   align-items: center;
@@ -571,6 +626,162 @@ body.ab-agg-open {
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
   gap: 32px 20px;
   align-content: start;
+}
+
+.ab-agg-sort-bar[hidden],
+.ab-agg-grid[hidden],
+.ab-agg-map-view[hidden] {
+  display: none !important;
+}
+
+.ab-agg-map-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: #f7f7f7;
+}
+
+.ab-agg-map-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 24px;
+  border-top: 1px solid #ebebeb;
+  border-bottom: 1px solid #ebebeb;
+  background: #fff;
+  font-size: 12px;
+}
+
+.ab-agg-map-summary {
+  color: #717171;
+  margin-right: 4px;
+}
+
+.ab-agg-map-toolbar button,
+.ab-agg-map-toolbar select,
+.ab-agg-map-toolbar input {
+  border: 1px solid #b0b0b0;
+  border-radius: 8px;
+  background: #fff;
+  color: #222;
+  font: inherit;
+  height: 28px;
+}
+
+.ab-agg-map-toolbar button {
+  padding: 0 10px;
+  cursor: pointer;
+}
+
+.ab-agg-map-toolbar button:hover {
+  background: #f7f7f7;
+}
+
+.ab-agg-map-toolbar input {
+  width: 52px;
+  padding: 0 6px;
+}
+
+.ab-agg-map-label-ctrl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #717171;
+}
+
+.ab-agg-map-viewport {
+  position: relative;
+  flex: 1;
+  min-height: 360px;
+  overflow: hidden;
+  background: #d9e4dd;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.ab-agg-map-viewport.is-panning {
+  cursor: grabbing;
+}
+
+.ab-agg-map-tiles,
+.ab-agg-map-pins {
+  position: absolute;
+  inset: 0;
+}
+
+.ab-agg-map-tiles img {
+  position: absolute;
+  width: 256px;
+  height: 256px;
+  user-select: none;
+}
+
+.ab-agg-map-pin {
+  position: absolute;
+  z-index: 5;
+  transform: translate(-50%, -100%);
+  min-width: 42px;
+  height: 28px;
+  padding: 0 8px;
+  border: 2px solid #fff;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+}
+
+.ab-agg-map-pin::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -7px;
+  width: 10px;
+  height: 10px;
+  background: inherit;
+  border-right: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.ab-agg-map-pin:hover,
+.ab-agg-map-pin:focus {
+  z-index: 8;
+  outline: none;
+  transform: translate(-50%, -100%) scale(1.08);
+}
+
+.ab-agg-map-preview {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  z-index: 20;
+  width: min(360px, calc(100% - 36px));
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+  opacity: 0;
+  transform: translateY(8px);
+  pointer-events: none;
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.ab-agg-map-preview.is-open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.ab-agg-map-card-tile .ab-agg-photo {
+  border-radius: 12px;
 }
 
 @media (max-width: 560px) {
@@ -625,6 +836,33 @@ body.ab-agg-open {
   object-fit: cover;
   flex-shrink: 0;
   display: block;
+}
+
+.ab-agg-map {
+  position: absolute;
+  inset: 0;
+  z-index: 12;
+  opacity: 0;
+  background: #d8d8d8;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.ab-agg-map iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  filter: saturate(0.95) contrast(1.02);
+  pointer-events: none;
+}
+
+body.ab-option-held .ab-agg-tile:hover .ab-agg-map {
+  opacity: 1;
+}
+
+body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
+  opacity: 0;
 }
 
 /* guest favorite pill */
@@ -798,14 +1036,33 @@ body.ab-agg-open {
     }
     return ranks;
   };
-  var getColorForScore = (score) => {
+  var scoreToStars = (score) => 1 + 4 * score;
+  var computeReviewFinalScore = (lb, rel) => 0.75 * lb + 0.25 * rel;
+  var scoreLowerBoundEntries = (entries) => {
+    if (!entries.length)
+      return [];
+    const ranks = avgRanks(entries.map((entry) => entry.lb));
+    const total = entries.length;
+    return entries.map((entry, index) => {
+      const rel = total <= 1 ? 0.5 : ranks[index] / (total - 1);
+      const final = computeReviewFinalScore(entry.lb, rel);
+      return {
+        ...entry,
+        rel,
+        final,
+        finalStars: scoreToStars(final)
+      };
+    });
+  };
+  var getColorForScore = (score, maxChannel = 255) => {
+    const max = Math.max(0, maxChannel);
     let r, g;
     if (score < 0.5) {
-      r = 255;
-      g = Math.round(score * 2 * 255);
+      r = max;
+      g = Math.round(score * 2 * max);
     } else {
-      r = Math.round((1 - (score - 0.5) * 2) * 255);
-      g = 255;
+      r = Math.round((1 - (score - 0.5) * 2) * max);
+      g = max;
     }
     return `rgb(${r}, ${g}, 0)`;
   };
@@ -847,6 +1104,10 @@ body.ab-agg-open {
     }
     return null;
   };
+  var readTextStore = (key, fallback, opts) => {
+    const value = readRawStore(key, opts);
+    return value === null ? fallback : value;
+  };
   var writeTextStore = (key, value, opts) => {
     for (const adapter of getAdapters(opts?.adapters)) {
       try {
@@ -883,7 +1144,10 @@ body.ab-agg-open {
     }
   };
 
-  // src/airbnb.com/airbnb-score-helpers.ts
+  // src/lib/text.ts
+  var normalizeWhitespace = (value) => (value ?? "").replace(/\s+/g, " ").trim();
+
+  // src/airbnb.com/airbnb-score.helpers.ts
   var SETTINGS_KEY = "ab-score-settings-v1";
   var SORT_FIELDS = [
     { id: "score", label: "Score", field: "abScore" },
@@ -996,21 +1260,12 @@ body.ab-agg-open {
     return label;
   }
   function getTextColorForScore(score) {
-    const MAX = 185;
-    let r, g;
-    if (score < 0.5) {
-      r = MAX;
-      g = Math.round(score * 2 * MAX);
-    } else {
-      r = Math.round((1 - (score - 0.5) * 2) * MAX);
-      g = MAX;
-    }
-    return `rgb(${r}, ${g}, 0)`;
+    return getColorForScore(score, 185);
   }
   function parsePriceNights(text) {
     if (!text)
       return null;
-    const normalized = text.replace(/\s+/g, " ").trim();
+    const normalized = normalizeWhitespace(text);
     const m = normalized.match(/(.+?)\s+for\s+(\d+)\s+nights?/i);
     if (!m)
       return null;
@@ -1074,24 +1329,54 @@ body.ab-agg-open {
   function getHeadingTexts(root) {
     return Array.from(root.querySelectorAll("h1, h2, h3")).map((el) => (el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase()).filter(Boolean);
   }
+  var hasSimilarDatesHeading = (headingTexts) => {
+    return headingTexts.some((text) => text.includes("available for similar dates"));
+  };
+  var hasMoreStaysHeading = (headingTexts) => {
+    return headingTexts.some((text) => text.includes("more stays available for your dates"));
+  };
+  var hasUnrelatedHeading = (headingTexts) => {
+    return headingTexts.some((text) => !text.includes("available for similar dates"));
+  };
+  var chooseSimilarDatesSectionIndex = (ancestors) => {
+    let candidate = null;
+    for (let i = 0;i < ancestors.length; i++) {
+      const ancestor = ancestors[i];
+      if (ancestor.isProtectedContainer || hasMoreStaysHeading(ancestor.headingTexts))
+        break;
+      if (ancestor.cardCount > 0 && hasSimilarDatesHeading(ancestor.headingTexts)) {
+        candidate = i;
+      }
+      const parent = ancestors[i + 1];
+      if (candidate !== null && (!parent || parent.isProtectedContainer || hasUnrelatedHeading(parent.headingTexts))) {
+        break;
+      }
+    }
+    return candidate;
+  };
+  var isProtectedSearchContainer = (el) => {
+    if (el === document.body)
+      return true;
+    if (el.tagName === "MAIN")
+      return true;
+    return ["react-application", "site-content", "layout_container"].includes(el.id);
+  };
   function findAvailableSimilarDatesSection() {
     const heading = Array.from(document.querySelectorAll("h1, h2, h3")).find((el2) => /available for similar dates/i.test(el2.textContent || ""));
     if (!heading)
       return null;
-    let best = null;
+    const ancestors = [];
     let el = heading.parentElement;
     while (el && el !== document.body) {
-      const headingTexts = getHeadingTexts(el);
-      const hasSimilar = headingTexts.some((text) => text.includes("available for similar dates"));
-      const hasMoreStays = headingTexts.some((text) => text.includes("more stays available for your dates"));
-      const cardCount = el.querySelectorAll('[data-testid="card-container"]').length;
-      if (cardCount > 0 && hasSimilar && !hasMoreStays)
-        best = el;
-      if (hasMoreStays)
-        break;
+      ancestors.push(el);
       el = el.parentElement;
     }
-    return best;
+    const sectionIdx = chooseSimilarDatesSectionIndex(ancestors.map((ancestor) => ({
+      headingTexts: getHeadingTexts(ancestor),
+      cardCount: ancestor.querySelectorAll('[data-testid="card-container"]').length,
+      isProtectedContainer: isProtectedSearchContainer(ancestor)
+    })));
+    return sectionIdx === null ? null : ancestors[sectionIdx];
   }
   function removeAvailableSimilarDatesSection() {
     const section = findAvailableSimilarDatesSection();
@@ -1441,6 +1726,7 @@ body.ab-agg-open {
     return Number.isFinite(n) ? n : null;
   };
   var listingPhotosCache = new Map;
+  var listingRatingCache = new Map;
   function logPhotoFetch(event, details) {
     recordImageDebug(event, details);
   }
@@ -1453,6 +1739,67 @@ body.ab-agg-open {
     } catch (_e) {
       return "";
     }
+  };
+  var parseListingRatingDetails = (html) => {
+    const overallMatch = html.match(/"overallCount":(\d+),"overallRating":(\d+(?:\.\d+)?|null)/);
+    if (overallMatch) {
+      const reviewCount = parseReviewCount(overallMatch[1]);
+      const stars = overallMatch[2] === "null" ? NaN : Number.parseFloat(overallMatch[2]);
+      if (reviewCount > 0 && Number.isFinite(stars) && stars > 0)
+        return { stars, reviewCount };
+    }
+    const hiddenMatch = html.match(/"guestSatisfactionOverall":(\d+(?:\.\d+)?).*?"visibleReviewCount":"?([\d,]+)"?/);
+    if (hiddenMatch) {
+      const stars = Number.parseFloat(hiddenMatch[1]);
+      const reviewCount = parseReviewCount(hiddenMatch[2]);
+      if (reviewCount > 0 && Number.isFinite(stars) && stars > 0)
+        return { stars, reviewCount };
+    }
+    const embedMatch = html.match(/"reviewCount":(\d+),"starRating":(\d+(?:\.\d+)?)/);
+    if (embedMatch) {
+      const reviewCount = parseReviewCount(embedMatch[1]);
+      const stars = Number.parseFloat(embedMatch[2]);
+      if (reviewCount > 0 && Number.isFinite(stars) && stars > 0)
+        return { stars, reviewCount };
+    }
+    return null;
+  };
+  var fetchListingRatingDetails = async (url) => {
+    const cached = listingRatingCache.get(url);
+    if (cached)
+      return cached;
+    const pending = (async () => {
+      try {
+        const html = await fetch(url, { credentials: "include" }).then((r) => r.text());
+        return parseListingRatingDetails(html);
+      } catch (_e) {
+        return null;
+      }
+    })();
+    listingRatingCache.set(url, pending);
+    return pending;
+  };
+  var hydrateMissingRatings = async (listings) => {
+    const missing = listings.filter((item) => !item.hasRating && item.url);
+    const concurrency = 6;
+    let next = 0;
+    const hydrateOne = async (item) => {
+      const rating = await fetchListingRatingDetails(item.url);
+      if (!rating)
+        return;
+      item.hasRating = true;
+      item.stars = rating.stars;
+      item.reviewCount = rating.reviewCount;
+      item.ratingLabel = `${rating.stars.toFixed(2)} (${rating.reviewCount})`;
+      item.lb = wilsonLB(rating.stars, rating.reviewCount);
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, missing.length) }, async () => {
+      while (next < missing.length) {
+        const item = missing[next];
+        next += 1;
+        await hydrateOne(item);
+      }
+    }));
   };
   var collectExcludedListingIds = (doc) => {
     const excluded = new Set;
@@ -1483,11 +1830,14 @@ body.ab-agg-open {
   };
   var mapAggregatedListing = (result, fallbackIdx) => {
     const rating = parseRatingLabel(result.avgRatingA11yLabel);
-    if (!rating)
-      return null;
+    const hasRating = rating !== null;
     const listingId = decodeDemandId(result.demandStayListing?.id);
     const url = listingId ? `https://www.airbnb.com/rooms/${listingId}` : "";
     const key = listingId || `fallback-${fallbackIdx}`;
+    const latRaw = result.demandStayListing?.location?.coordinate?.latitude;
+    const lngRaw = result.demandStayListing?.location?.coordinate?.longitude;
+    const lat = typeof latRaw === "number" && Number.isFinite(latRaw) ? latRaw : null;
+    const lng = typeof lngRaw === "number" && Number.isFinite(lngRaw) ? lngRaw : null;
     const name = result.nameLocalized?.localizedStringWithTranslationPreference || result.subtitle || result.title || "Listing";
     const typeLabel = result.title || "";
     const allContentLines = [
@@ -1526,7 +1876,9 @@ body.ab-agg-open {
       });
     }
     const nightlyLabel = nightly ? `$${formatUsd(nightly)}/n` : "";
-    const lb = wilsonLB(rating.stars, rating.reviewCount);
+    const stars = rating?.stars ?? 0;
+    const reviewCount = rating?.reviewCount ?? 0;
+    const lb = hasRating ? wilsonLB(stars, reviewCount) : 0;
     const priceDisplayLabel = priceAccLabel || (priceLabel && qualifier ? `${priceLabel} ${qualifier}` : priceLabel);
     return {
       key,
@@ -1541,9 +1893,12 @@ body.ab-agg-open {
       priceLabel: priceDisplayLabel,
       nightlyLabel,
       nightly,
-      stars: rating.stars,
-      reviewCount: rating.reviewCount,
-      ratingLabel: result.avgRatingLocalized || `${rating.stars} (${rating.reviewCount})`,
+      lat,
+      lng,
+      hasRating,
+      stars,
+      reviewCount,
+      ratingLabel: result.avgRatingLocalized || (hasRating ? `${stars} (${reviewCount})` : "No reviews"),
       lb,
       rel: 0,
       final: 0,
@@ -1642,7 +1997,7 @@ body.ab-agg-open {
   }
   async function fetchAggregatedListings(limit, onProgress) {
     const byKey = new Map;
-    onProgress(1);
+    onProgress("p1");
     const firstPage = await fetchSearchPage(null);
     firstPage.searchResults.forEach((result, i) => {
       if (byKey.size >= limit)
@@ -1660,7 +2015,7 @@ body.ab-agg-open {
       cursors.push(firstPage.nextCursor);
     for (let i = 0;i < cursors.length && byKey.size < limit && pagesFetched < maxPages; i++) {
       const pageNum = i + 2;
-      onProgress(pageNum);
+      onProgress(`p${pageNum}`);
       const page = await fetchSearchPage(cursors[i]);
       pagesFetched = pageNum;
       page.searchResults.forEach((result, idx) => {
@@ -1674,19 +2029,24 @@ body.ab-agg-open {
       });
     }
     const listings = Array.from(byKey.values());
-    const lbs = listings.map((d) => d.lb);
+    if (listings.some((item) => !item.hasRating && item.url)) {
+      onProgress("details");
+      await hydrateMissingRatings(listings);
+    }
+    const ratedListings = listings.filter((d) => d.hasRating);
+    const lbs = ratedListings.map((d) => d.lb);
     const ranks = avgRanks(lbs);
-    const N = listings.length;
-    listings.forEach((d, i) => {
+    const N = ratedListings.length;
+    ratedListings.forEach((d, i) => {
       const rel = N <= 1 ? 0.5 : ranks[i] / (N - 1);
       const final = 0.75 * d.lb + 0.25 * rel;
       d.rel = rel;
       d.final = final;
       d.finalStars = 1 + 4 * final;
     });
-    const starsRanks = avgRanks(listings.map((d) => d.stars));
-    const reviewRanks = avgRanks(listings.map((d) => d.reviewCount));
-    listings.forEach((d, i) => {
+    const starsRanks = avgRanks(ratedListings.map((d) => d.stars));
+    const reviewRanks = avgRanks(ratedListings.map((d) => d.reviewCount));
+    ratedListings.forEach((d, i) => {
       d.starsRel = N <= 1 ? 0.5 : starsRanks[i] / (N - 1);
       d.reviewRel = N <= 1 ? 0.5 : reviewRanks[i] / (N - 1);
     });
@@ -1703,7 +2063,7 @@ body.ab-agg-open {
     }
     const dealPriced = listings.map((d) => ({
       item: d,
-      metric: d.nightly === null ? null : computeValueMetric(d.final, d.nightly, "deal")
+      metric: !d.hasRating || d.nightly === null ? null : computeValueMetric(d.final, d.nightly, "deal")
     })).filter((d) => d.metric !== null);
     if (dealPriced.length > 1) {
       const dealRanks = avgRanks(dealPriced.map((d) => d.metric));
@@ -1728,15 +2088,23 @@ body.ab-agg-open {
   function applyAggregatedValueModel(listings) {
     listings.forEach((d) => {
       d.valueRel = settings.valueModel === "deal" ? d.dealRel : d.priceRel;
-      d.valueScore = computeValueScore(d.final, d.valueRel);
+      d.valueScore = d.hasRating ? computeValueScore(d.final, d.valueRel) : 0;
     });
   }
 
   // src/airbnb.com/airbnb-score-overlay.ts
   var AGG_LIMIT = 200;
   var AGG_OVERLAY_ID = "ab-agg-overlay";
+  var OPTION_HELD_CLASS = "ab-option-held";
+  var MAP_ZOOM_KEY = "ab-agg-map-zoom-v1";
+  var MAP_ZOOM_DEFAULT = 15;
+  var MAP_ZOOM_MIN = 3;
+  var MAP_ZOOM_MAX = 20;
+  var MAP_TILE_SIZE = 256;
   var aggregatedCache = null;
   var aggregatedCacheKey = "";
+  var optionPreviewListenersInstalled = false;
+  var activeAggMapRender = null;
   function invalidateAggCache() {
     if (aggregatedCache === null)
       return;
@@ -1750,9 +2118,77 @@ body.ab-agg-open {
     const overlay = document.getElementById(AGG_OVERLAY_ID);
     if (overlay)
       overlay.remove();
-    document.body.classList.remove("ab-agg-open");
+    activeAggMapRender = null;
+    document.body.classList.remove("ab-agg-open", OPTION_HELD_CLASS);
   }
+  var setOptionPreviewHeld = (held) => {
+    document.body.classList.toggle(OPTION_HELD_CLASS, held);
+    if (held) {
+      document.querySelectorAll(".ab-agg-tile:hover").forEach(loadAggTileMap);
+    }
+  };
+  var installOptionPreviewListeners = () => {
+    if (optionPreviewListenersInstalled)
+      return;
+    optionPreviewListenersInstalled = true;
+    window.addEventListener("keydown", (event) => {
+      if (event.altKey)
+        setOptionPreviewHeld(true);
+    });
+    window.addEventListener("keyup", (event) => {
+      if (event.key === "Alt")
+        setOptionPreviewHeld(false);
+    });
+    window.addEventListener("blur", () => setOptionPreviewHeld(false));
+  };
+  var clampMapZoom = (zoom) => {
+    if (!Number.isFinite(zoom))
+      return MAP_ZOOM_DEFAULT;
+    return Math.min(Math.max(Math.round(zoom), MAP_ZOOM_MIN), MAP_ZOOM_MAX);
+  };
+  var parseMapZoom = (value) => {
+    return clampMapZoom(Number.parseInt(value, 10));
+  };
+  var aggMapZoom = parseMapZoom(readTextStore(MAP_ZOOM_KEY, String(MAP_ZOOM_DEFAULT)));
+  var updateAggMapZoomInputs = () => {
+    document.querySelectorAll(".ab-agg-map-zoom-input").forEach((input) => {
+      input.value = String(aggMapZoom);
+    });
+  };
+  var getAggMapEmbedUrl = (lat, lng, zoom = aggMapZoom) => {
+    return `https://www.google.com/maps?q=${encodeURIComponent(`${lat},${lng}`)}&z=${zoom}&output=embed`;
+  };
+  var getAggListingMapEmbedUrl = (item) => {
+    if (item.lat === null || item.lng === null)
+      return null;
+    return getAggMapEmbedUrl(item.lat, item.lng);
+  };
+  var saveAggMapZoom = (zoom) => {
+    aggMapZoom = clampMapZoom(zoom);
+    writeTextStore(MAP_ZOOM_KEY, String(aggMapZoom));
+    updateAggMapZoomInputs();
+    document.querySelectorAll(".ab-agg-map iframe").forEach((iframe) => {
+      const lat = Number.parseFloat(iframe.dataset.lat ?? "");
+      const lng = Number.parseFloat(iframe.dataset.lng ?? "");
+      if (!Number.isFinite(lat) || !Number.isFinite(lng))
+        return;
+      const src = getAggMapEmbedUrl(lat, lng);
+      iframe.dataset.src = src;
+      if (iframe.getAttribute("src"))
+        iframe.src = src;
+    });
+    activeAggMapRender?.();
+  };
+  var loadAggTileMap = (tile) => {
+    const iframe = tile.querySelector(".ab-agg-map iframe");
+    const src = iframe?.dataset.src;
+    if (!iframe || !src || iframe.src === src)
+      return;
+    iframe.src = src;
+  };
   function getAggSortValue(item, fieldId) {
+    if (!item.hasRating && fieldId !== "price")
+      return 0;
     switch (fieldId) {
       case "score":
         return item.final;
@@ -1815,6 +2251,28 @@ body.ab-agg-open {
       renderGrid();
     });
     bar.appendChild(valueControl);
+    const mapHint = document.createElement("span");
+    mapHint.className = "ab-agg-map-hint";
+    mapHint.textContent = "Option-hover photos for map";
+    bar.appendChild(mapHint);
+    const zoomGroup = document.createElement("label");
+    zoomGroup.className = "ab-agg-map-zoom-ctrl";
+    zoomGroup.textContent = "Map zoom:";
+    const zoomInput = document.createElement("input");
+    zoomInput.className = "ab-agg-map-zoom-input";
+    zoomInput.type = "number";
+    zoomInput.min = String(MAP_ZOOM_MIN);
+    zoomInput.max = String(MAP_ZOOM_MAX);
+    zoomInput.step = "1";
+    zoomInput.value = String(aggMapZoom);
+    zoomInput.title = "Google Maps zoom level for Option-hover previews";
+    zoomInput.addEventListener("change", () => {
+      const nextZoom = parseMapZoom(zoomInput.value);
+      zoomInput.value = String(nextZoom);
+      saveAggMapZoom(nextZoom);
+    });
+    zoomGroup.appendChild(zoomInput);
+    bar.appendChild(zoomGroup);
     const COL_OPTIONS = [0, 1, 2, 3, 4, 5, 6];
     let activeCols = 0;
     const colsGroup = document.createElement("div");
@@ -1858,6 +2316,271 @@ body.ab-agg-open {
     renderGrid();
     return bar;
   }
+  var getMappableListings = (listings) => {
+    return listings.filter((item) => item.lat !== null && item.lng !== null);
+  };
+  var projectMapPoint = (lat, lng, zoom) => {
+    const scale = MAP_TILE_SIZE * 2 ** zoom;
+    const latRad = lat * Math.PI / 180;
+    return {
+      x: (lng + 180) / 360 * scale,
+      y: (1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2 * scale
+    };
+  };
+  var unprojectMapPoint = (x, y, zoom) => {
+    const scale = MAP_TILE_SIZE * 2 ** zoom;
+    const lng = x / scale * 360 - 180;
+    const n = Math.PI - 2 * Math.PI * y / scale;
+    const lat = 180 / Math.PI * Math.atan(0.5 * (Math.exp(n) - Math.exp(-n)));
+    return { lat, lng };
+  };
+  var getMapCenter = (items) => {
+    if (!items.length)
+      return { lat: 0, lng: 0 };
+    const sum = items.reduce((acc, item) => ({ lat: acc.lat + item.lat, lng: acc.lng + item.lng }), {
+      lat: 0,
+      lng: 0
+    });
+    return { lat: sum.lat / items.length, lng: sum.lng / items.length };
+  };
+  var getMapFitState = (items, width, height) => {
+    const center = getMapCenter(items);
+    if (!items.length || width <= 0 || height <= 0)
+      return { ...center, zoom: aggMapZoom };
+    const padding = 96;
+    let fitZoom = MAP_ZOOM_MIN;
+    for (let zoom = MAP_ZOOM_MAX;zoom >= MAP_ZOOM_MIN; zoom -= 1) {
+      const points = items.map((item) => projectMapPoint(item.lat, item.lng, zoom));
+      const xs = points.map((point) => point.x);
+      const ys = points.map((point) => point.y);
+      const fits = Math.max(...xs) - Math.min(...xs) <= Math.max(80, width - padding) && Math.max(...ys) - Math.min(...ys) <= Math.max(80, height - padding);
+      if (fits) {
+        fitZoom = zoom;
+        break;
+      }
+    }
+    const fitPoints = items.map((item) => projectMapPoint(item.lat, item.lng, fitZoom));
+    const fitXs = fitPoints.map((point) => point.x);
+    const fitYs = fitPoints.map((point) => point.y);
+    const fitCenter = unprojectMapPoint((Math.min(...fitXs) + Math.max(...fitXs)) / 2, (Math.min(...fitYs) + Math.max(...fitYs)) / 2, fitZoom);
+    return { ...fitCenter, zoom: fitZoom };
+  };
+  var getMapPinLabel = (item, labelMode) => {
+    if (!item.hasRating && labelMode !== "price")
+      return "0";
+    if (labelMode === "value")
+      return (1 + 4 * item.valueScore).toFixed(1);
+    if (labelMode === "price")
+      return item.nightly ? `$${formatUsd(item.nightly)}` : "$-";
+    return item.finalStars.toFixed(1);
+  };
+  var buildAggMapView = (listings) => {
+    const items = getMappableListings(listings);
+    const view = document.createElement("div");
+    view.className = "ab-agg-map-view";
+    const toolbar = document.createElement("div");
+    toolbar.className = "ab-agg-map-toolbar";
+    const summary = document.createElement("span");
+    summary.className = "ab-agg-map-summary";
+    summary.textContent = `${items.length} mapped listings`;
+    toolbar.appendChild(summary);
+    const fitBtn = document.createElement("button");
+    fitBtn.type = "button";
+    fitBtn.textContent = "Fit";
+    toolbar.appendChild(fitBtn);
+    const zoomOutBtn = document.createElement("button");
+    zoomOutBtn.type = "button";
+    zoomOutBtn.textContent = "-";
+    toolbar.appendChild(zoomOutBtn);
+    const zoomInput = document.createElement("input");
+    zoomInput.className = "ab-agg-map-zoom-input";
+    zoomInput.type = "number";
+    zoomInput.min = String(MAP_ZOOM_MIN);
+    zoomInput.max = String(MAP_ZOOM_MAX);
+    zoomInput.step = "1";
+    zoomInput.value = String(aggMapZoom);
+    toolbar.appendChild(zoomInput);
+    const zoomInBtn = document.createElement("button");
+    zoomInBtn.type = "button";
+    zoomInBtn.textContent = "+";
+    toolbar.appendChild(zoomInBtn);
+    const labelCtrl = document.createElement("label");
+    labelCtrl.className = "ab-agg-map-label-ctrl";
+    labelCtrl.textContent = "Pins:";
+    const labelSelect = document.createElement("select");
+    const labelOptions = [
+      { id: "score", label: "score" },
+      { id: "value", label: "value" },
+      { id: "price", label: "price" }
+    ];
+    labelOptions.forEach((option) => {
+      const opt = document.createElement("option");
+      opt.value = option.id;
+      opt.textContent = option.label;
+      labelSelect.appendChild(opt);
+    });
+    labelCtrl.appendChild(labelSelect);
+    toolbar.appendChild(labelCtrl);
+    const viewport = document.createElement("div");
+    viewport.className = "ab-agg-map-viewport";
+    const tilePane = document.createElement("div");
+    tilePane.className = "ab-agg-map-tiles";
+    viewport.appendChild(tilePane);
+    const pinPane = document.createElement("div");
+    pinPane.className = "ab-agg-map-pins";
+    viewport.appendChild(pinPane);
+    const preview = document.createElement("div");
+    preview.className = "ab-agg-map-preview";
+    viewport.appendChild(preview);
+    view.appendChild(toolbar);
+    view.appendChild(viewport);
+    let labelMode = "score";
+    let state = { ...getMapCenter(items), zoom: aggMapZoom };
+    let fitted = false;
+    const showPreview = (item) => {
+      preview.innerHTML = "";
+      const tile = buildAggTile(item);
+      tile.classList.add("ab-agg-map-card-tile");
+      preview.appendChild(tile);
+      preview.classList.add("is-open");
+    };
+    const renderMap = () => {
+      state.zoom = aggMapZoom;
+      zoomInput.value = String(state.zoom);
+      tilePane.innerHTML = "";
+      pinPane.innerHTML = "";
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+      if (!width || !height || !items.length)
+        return;
+      if (!fitted) {
+        state = getMapFitState(items, width, height);
+        fitted = true;
+        saveAggMapZoom(state.zoom);
+        return;
+      }
+      const center = projectMapPoint(state.lat, state.lng, state.zoom);
+      const topLeft = { x: center.x - width / 2, y: center.y - height / 2 };
+      const scaleTiles = 2 ** state.zoom;
+      const minTileX = Math.floor(topLeft.x / MAP_TILE_SIZE);
+      const maxTileX = Math.floor((topLeft.x + width) / MAP_TILE_SIZE);
+      const minTileY = Math.floor(topLeft.y / MAP_TILE_SIZE);
+      const maxTileY = Math.floor((topLeft.y + height) / MAP_TILE_SIZE);
+      for (let tileX = minTileX;tileX <= maxTileX; tileX += 1) {
+        for (let tileY = minTileY;tileY <= maxTileY; tileY += 1) {
+          if (tileY < 0 || tileY >= scaleTiles)
+            continue;
+          const wrappedX = (tileX % scaleTiles + scaleTiles) % scaleTiles;
+          const img = document.createElement("img");
+          img.alt = "";
+          img.draggable = false;
+          img.src = `https://tile.openstreetmap.org/${state.zoom}/${wrappedX}/${tileY}.png`;
+          img.style.left = `${tileX * MAP_TILE_SIZE - topLeft.x}px`;
+          img.style.top = `${tileY * MAP_TILE_SIZE - topLeft.y}px`;
+          tilePane.appendChild(img);
+        }
+      }
+      items.forEach((item) => {
+        const point = projectMapPoint(item.lat, item.lng, state.zoom);
+        const x = point.x - topLeft.x;
+        const y = point.y - topLeft.y;
+        if (x < -40 || y < -40 || x > width + 40 || y > height + 40)
+          return;
+        const pin = document.createElement("button");
+        pin.type = "button";
+        pin.className = "ab-agg-map-pin";
+        pin.textContent = getMapPinLabel(item, labelMode);
+        pin.title = item.name;
+        pin.style.left = `${x}px`;
+        pin.style.top = `${y}px`;
+        pin.style.background = item.hasRating ? `hsl(${Math.round(120 * item.rel)}, 82%, 38%)` : "#717171";
+        pin.addEventListener("mouseenter", () => showPreview(item));
+        pin.addEventListener("focus", () => showPreview(item));
+        pin.addEventListener("click", () => {
+          if (item.url)
+            window.open(item.url, "_blank", "noopener,noreferrer");
+        });
+        pinPane.appendChild(pin);
+      });
+    };
+    const zoomAt = (clientX, clientY, nextZoom) => {
+      const rect = viewport.getBoundingClientRect();
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+      const offsetX = clientX - rect.left;
+      const offsetY = clientY - rect.top;
+      const centerBefore = projectMapPoint(state.lat, state.lng, state.zoom);
+      const topLeftBefore = { x: centerBefore.x - width / 2, y: centerBefore.y - height / 2 };
+      const focusBefore = unprojectMapPoint(topLeftBefore.x + offsetX, topLeftBefore.y + offsetY, state.zoom);
+      const clampedZoom = clampMapZoom(nextZoom);
+      const focusAfter = projectMapPoint(focusBefore.lat, focusBefore.lng, clampedZoom);
+      const centerAfter = unprojectMapPoint(focusAfter.x - offsetX + width / 2, focusAfter.y - offsetY + height / 2, clampedZoom);
+      state = { ...centerAfter, zoom: clampedZoom };
+      saveAggMapZoom(clampedZoom);
+    };
+    const fitMap = () => {
+      state = getMapFitState(items, viewport.clientWidth, viewport.clientHeight);
+      saveAggMapZoom(state.zoom);
+    };
+    fitBtn.addEventListener("click", fitMap);
+    zoomOutBtn.addEventListener("click", () => saveAggMapZoom(aggMapZoom - 1));
+    zoomInBtn.addEventListener("click", () => saveAggMapZoom(aggMapZoom + 1));
+    zoomInput.addEventListener("change", () => saveAggMapZoom(parseMapZoom(zoomInput.value)));
+    labelSelect.addEventListener("change", () => {
+      labelMode = labelSelect.value;
+      renderMap();
+    });
+    viewport.addEventListener("mouseleave", () => preview.classList.remove("is-open"));
+    viewport.addEventListener("dblclick", (event) => {
+      if (event.target.closest("button, a, input, select"))
+        return;
+      event.preventDefault();
+      zoomAt(event.clientX, event.clientY, aggMapZoom + (event.shiftKey ? -1 : 1));
+    });
+    let wheelZoomRemainder = 0;
+    let wheelZoomReset = null;
+    viewport.addEventListener("wheel", (event) => {
+      event.preventDefault();
+      if (wheelZoomReset !== null)
+        window.clearTimeout(wheelZoomReset);
+      wheelZoomRemainder += event.deltaY;
+      const stepSize = 700;
+      if (Math.abs(wheelZoomRemainder) >= stepSize) {
+        saveAggMapZoom(aggMapZoom + (wheelZoomRemainder < 0 ? 1 : -1));
+        wheelZoomRemainder = 0;
+      }
+      wheelZoomReset = window.setTimeout(() => {
+        wheelZoomRemainder = 0;
+        wheelZoomReset = null;
+      }, 180);
+    }, { passive: false });
+    viewport.addEventListener("pointerdown", (event) => {
+      if (event.target.closest("button, a, input, select"))
+        return;
+      event.preventDefault();
+      viewport.setPointerCapture(event.pointerId);
+      viewport.classList.add("is-panning");
+      const start = { x: event.clientX, y: event.clientY };
+      const startCenter = projectMapPoint(state.lat, state.lng, state.zoom);
+      const onMove = (moveEvent) => {
+        const next = unprojectMapPoint(startCenter.x - (moveEvent.clientX - start.x), startCenter.y - (moveEvent.clientY - start.y), state.zoom);
+        state = { ...next, zoom: state.zoom };
+        renderMap();
+      };
+      const onDone = () => {
+        viewport.classList.remove("is-panning");
+        viewport.removeEventListener("pointermove", onMove);
+        viewport.removeEventListener("pointerup", onDone);
+        viewport.removeEventListener("pointercancel", onDone);
+      };
+      viewport.addEventListener("pointermove", onMove);
+      viewport.addEventListener("pointerup", onDone);
+      viewport.addEventListener("pointercancel", onDone);
+    });
+    activeAggMapRender = renderMap;
+    window.setTimeout(renderMap, 0);
+    return view;
+  };
   function buildAggTile(item) {
     const tile = document.createElement("a");
     tile.className = "ab-agg-tile";
@@ -1879,6 +2602,30 @@ body.ab-agg-open {
       strip.appendChild(img);
     });
     photo.appendChild(strip);
+    const mapEmbedUrl = getAggListingMapEmbedUrl(item);
+    if (mapEmbedUrl) {
+      const map = document.createElement("div");
+      map.className = "ab-agg-map";
+      const iframe = document.createElement("iframe");
+      iframe.dataset.src = mapEmbedUrl;
+      iframe.dataset.lat = String(item.lat);
+      iframe.dataset.lng = String(item.lng);
+      iframe.loading = "lazy";
+      iframe.referrerPolicy = "no-referrer-when-downgrade";
+      iframe.title = `Map for ${item.name}`;
+      map.appendChild(iframe);
+      photo.appendChild(map);
+      tile.addEventListener("mouseenter", (event) => {
+        if (event.altKey) {
+          setOptionPreviewHeld(true);
+          loadAggTileMap(tile);
+        }
+      });
+      tile.addEventListener("mousemove", (event) => {
+        if (event.altKey)
+          loadAggTileMap(tile);
+      });
+    }
     if (item.guestFavorite) {
       const gf = document.createElement("div");
       gf.className = "ab-agg-gf";
@@ -1891,8 +2638,15 @@ body.ab-agg-open {
       fc.textContent = "Free cancellation";
       photo.appendChild(fc);
     }
-    const { pillRow } = buildPillRow(item.rel, item.finalStars);
-    upsertValuePill(pillRow, item.valueRel, item.valueScore);
+    const { pillRow, scorePill } = buildPillRow(item.rel, item.finalStars);
+    if (item.hasRating) {
+      upsertValuePill(pillRow, item.valueRel, item.valueScore);
+    } else {
+      scorePill.style.background = "#717171";
+      scorePill.style.color = "#fff";
+      scorePill.textContent = "0 rev";
+      scorePill.title = "No reviews yet";
+    }
     photo.appendChild(pillRow);
     attachHoverCycle(photo, item.url ? () => fetchListingPhotos(item.url) : undefined);
     tile.appendChild(photo);
@@ -1947,6 +2701,7 @@ body.ab-agg-open {
   }
   function renderAggregatedOverlay(result, onRefresh) {
     closeAggregatedOverlay();
+    installOptionPreviewListeners();
     const overlay = document.createElement("div");
     overlay.id = AGG_OVERLAY_ID;
     overlay.className = "ab-agg-overlay";
@@ -1964,6 +2719,21 @@ body.ab-agg-open {
     header.appendChild(sub);
     const actions = document.createElement("div");
     actions.className = "ab-agg-actions";
+    const tabs = document.createElement("div");
+    tabs.className = "ab-agg-tabs";
+    const cardsTab = document.createElement("button");
+    cardsTab.type = "button";
+    cardsTab.className = "ab-agg-tab ab-active";
+    cardsTab.textContent = "Cards";
+    tabs.appendChild(cardsTab);
+    const mappedCount = getMappableListings(result.listings).length;
+    const mapTab = document.createElement("button");
+    mapTab.type = "button";
+    mapTab.className = "ab-agg-tab";
+    mapTab.textContent = `Map (${mappedCount})`;
+    mapTab.disabled = mappedCount === 0;
+    tabs.appendChild(mapTab);
+    actions.appendChild(tabs);
     const refreshBtn = document.createElement("button");
     refreshBtn.className = "ab-agg-refresh";
     refreshBtn.textContent = "Refresh";
@@ -1985,9 +2755,25 @@ body.ab-agg-open {
     panel.appendChild(header);
     const grid = document.createElement("div");
     grid.className = "ab-agg-grid";
+    const mapView = buildAggMapView(result.listings);
+    mapView.hidden = true;
     const sortBar = buildOverlaySortBar(result.listings, grid);
     panel.appendChild(sortBar);
     panel.appendChild(grid);
+    panel.appendChild(mapView);
+    const setActiveTab = (tab) => {
+      const isMap = tab === "map";
+      cardsTab.classList.toggle("ab-active", !isMap);
+      mapTab.classList.toggle("ab-active", isMap);
+      sortBar.hidden = isMap;
+      grid.hidden = isMap;
+      mapView.hidden = !isMap;
+      panel.classList.toggle("ab-agg-map-active", isMap);
+      if (isMap)
+        window.setTimeout(() => activeAggMapRender?.(), 0);
+    };
+    cardsTab.addEventListener("click", () => setActiveTab("cards"));
+    mapTab.addEventListener("click", () => setActiveTab("map"));
     overlay.appendChild(panel);
     overlay.addEventListener("click", (e) => {
       if (e.target === overlay)
@@ -2005,8 +2791,8 @@ body.ab-agg-open {
     btn.disabled = true;
     btn.textContent = "Loading view…";
     try {
-      const result = await fetchAggregatedListings(AGG_LIMIT, (pageNum) => {
-        btn.textContent = `Loading view p${pageNum}…`;
+      const result = await fetchAggregatedListings(AGG_LIMIT, (label) => {
+        btn.textContent = `Loading view ${label}…`;
       });
       aggregatedCache = result;
       aggregatedCacheKey = currentKey;
@@ -2188,20 +2974,14 @@ body.ab-agg-open {
         lb: wilsonLB(r.stars, r.reviewCount)
       }));
     }
-    const N = allRatings.length;
+    const globalRatings = scoreLowerBoundEntries(allRatings);
+    const N = globalRatings.length;
     if (!N) {
       btn.textContent = "No data";
       btn.disabled = false;
       _observer?.observe(_container, { childList: true, subtree: true });
       return;
     }
-    const lbs = allRatings.map((d) => d.lb);
-    const ranks = avgRanks(lbs);
-    const relScores = N <= 1 ? [0.5] : ranks.map((r) => r / (N - 1));
-    allRatings.forEach((d, i) => {
-      d.rel = relScores[i];
-      d.final = 0.75 * d.lb + 0.25 * d.rel;
-    });
     const domCards = Array.from(document.querySelectorAll(CARD_SELECTOR)).filter((c) => c.dataset.abProcessed === "true");
     domCards.forEach((card) => {
       const cardLb = parseFloat(card.dataset.abLb ?? "");
@@ -2209,7 +2989,7 @@ body.ab-agg-open {
         return;
       let countBelow = 0;
       let countSame = 0;
-      allRatings.forEach((d) => {
+      globalRatings.forEach((d) => {
         if (d.lb < cardLb - 0.000000001)
           countBelow++;
         else if (Math.abs(d.lb - cardLb) < 0.000000001)
@@ -2217,8 +2997,8 @@ body.ab-agg-open {
       });
       const rank = countSame > 0 ? countBelow + (countSame - 1) / 2 : countBelow;
       const rel = N <= 1 ? 0.5 : rank / (N - 1);
-      const finalScore = 0.75 * cardLb + 0.25 * rel;
-      const finalStars = 1 + 4 * finalScore;
+      const finalScore = computeReviewFinalScore(cardLb, rel);
+      const finalStars = scoreToStars(finalScore);
       const infoSection = getInfoSection(card);
       if (infoSection)
         infoSection.style.opacity = (0.35 + 0.65 * rel).toFixed(2);
@@ -2271,21 +3051,14 @@ body.ab-agg-open {
     }));
     const combined = [...allProcessed, ...itemData];
     const N = combined.length;
-    const lbValues = combined.map((d) => d.lb);
-    const ranks = avgRanks(lbValues);
-    const relScores = N === 1 ? [0.5] : ranks.map((r) => r / (N - 1));
-    combined.forEach((d, i) => {
-      d.rel = relScores[i];
-      d.final = 0.75 * d.lb + 0.25 * d.rel;
-      d.finalStars = 1 + 4 * d.final;
-    });
     const starsRanks = avgRanks(combined.map((d) => d.stars));
     const reviewRanks = avgRanks(combined.map((d) => d.reviewCount));
-    combined.forEach((d, i) => {
-      d.starsRel = N === 1 ? 0.5 : starsRanks[i] / (N - 1);
-      d.reviewRel = N === 1 ? 0.5 : reviewRanks[i] / (N - 1);
-    });
-    combined.forEach((d) => {
+    const scoredCombined = scoreLowerBoundEntries(combined).map((d, i) => ({
+      ...d,
+      starsRel: N === 1 ? 0.5 : starsRanks[i] / (N - 1),
+      reviewRel: N === 1 ? 0.5 : reviewRanks[i] / (N - 1)
+    }));
+    scoredCombined.forEach((d) => {
       if (!d.processed)
         return;
       const infoSection = getInfoSection(d.card);
@@ -2300,7 +3073,9 @@ body.ab-agg-open {
       colorRatingDisplay(d.card, d.starsRel, d.reviewRel);
       upsertNightlyRate(d.card);
     });
-    itemData.forEach((d) => {
+    scoredCombined.forEach((d) => {
+      if (d.processed)
+        return;
       const infoSection = getInfoSection(d.card);
       if (!infoSection)
         return;
@@ -2322,7 +3097,7 @@ body.ab-agg-open {
       d.card.dataset.abLb = d.lb.toFixed(6);
       d.card.dataset.abProcessed = "true";
     });
-    applyValueScoring(combined.map((d) => d.card));
+    applyValueScoring(scoredCombined.map((d) => d.card));
     applySort();
     console.log(`[Airbnb Score] Processed ${itemData.length} new cards, ${N} total`);
   }
@@ -2330,6 +3105,7 @@ body.ab-agg-open {
   // src/airbnb.com/airbnb-score.user.ts
   var STYLE_ID = "ab-score-style";
   var SORT_BAR_ID2 = "ab-sort-bar";
+  var BOOT_DELAY_MS = 1200;
   var SEARCH_OBSERVER_INIT = {
     childList: true,
     subtree: true
@@ -2380,19 +3156,32 @@ body.ab-agg-open {
     root: document.body,
     debounceMs: 600
   });
-  refreshObservation();
-  if (isSearchRoute()) {
-    runScorePass();
-    scheduleDeferredScorePass();
-    maybeResolveDirectSearchLocation();
-  }
-  watchLocationChange(() => {
-    resetSearchUi();
+  var runInitialScorePass = () => {
     refreshObservation();
     if (!isSearchRoute())
       return;
     runScorePass();
     scheduleDeferredScorePass();
     maybeResolveDirectSearchLocation();
-  }, { debounceMs: 300 });
+  };
+  var bootstrap = () => {
+    runInitialScorePass();
+    watchLocationChange(() => {
+      resetSearchUi();
+      refreshObservation();
+      if (!isSearchRoute())
+        return;
+      runScorePass();
+      scheduleDeferredScorePass();
+      maybeResolveDirectSearchLocation();
+    }, { debounceMs: 300 });
+  };
+  var scheduleBootstrap = () => {
+    window.setTimeout(bootstrap, BOOT_DELAY_MS);
+  };
+  if (document.readyState === "complete") {
+    scheduleBootstrap();
+  } else {
+    window.addEventListener("load", scheduleBootstrap, { once: true });
+  }
 })();

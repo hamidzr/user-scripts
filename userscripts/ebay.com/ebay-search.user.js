@@ -11,7 +11,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-end
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-search.user.js
-// @version              1.3.1
+// @version              1.3.2
 // ==/UserScript==
 
 'use strict';
@@ -117,6 +117,9 @@
   // src/lib/text.ts
   var escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
+  // src/ebay.com/ebay-search.helpers.ts
+  var shouldPreserveSearchFilters = (pathname) => pathname === "/sch/i.html";
+
   // src/ebay.com/ebay-search.user.ts
   var hasInitialized = false;
   var highlightingApplied = false;
@@ -142,6 +145,8 @@
     observer.observe(resultsContainer, { childList: true, subtree: true });
   };
   var interceptSearchForm = () => {
+    if (!shouldPreserveSearchFilters(window.location.pathname))
+      return;
     const searchForm = document.querySelector("#gh-f");
     const searchInput = document.querySelector("#gh-ac");
     if (!searchForm || !searchInput) {

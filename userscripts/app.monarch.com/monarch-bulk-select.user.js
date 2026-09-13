@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name                 Monarch Bulk Select
 // @author               AZ
-// @description          shift-click transaction checkboxes in Monarch to select a range
+// @description          shift-click transaction checkboxes in Monarch and export selected transactions
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
 // @grant                none
 // @match                https://app.monarch.com/*
@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
-// @version              1.0.1
+// @version              1.1.0
 // ==/UserScript==
 
 'use strict';
@@ -42,6 +42,20 @@
   // src/app.monarch.com/monarch-bulk-select.user.ts
   var exports_monarch_bulk_select_user = {};
 
+  // src/lib/dom.ts
+  var injectCSS = (id, css) => {
+    let style = document.getElementById(id);
+    if (style) {
+      style.textContent = css;
+      return style;
+    }
+    style = document.createElement("style");
+    style.id = id;
+    style.textContent = css;
+    (document.head ?? document.documentElement).appendChild(style);
+    return style;
+  };
+
   // src/lib/poll.ts
   var sleep = (ms) => new Promise((resolve) => {
     window.setTimeout(resolve, ms);
@@ -50,6 +64,41 @@
   // src/app.monarch.com/monarch-bulk-select.user.ts
   var ROW_SEL = 'div[class*="TransactionsList__TransactionRowContainer"]';
   var LIST_SEL = '[data-testid="virtuoso-item-list"], [data-test-id="virtuoso-item-list"]';
+  var HEADER_SEL = 'div[class*="TransactionListHeader__ListHeader"]';
+  var HEADER_ACTIONS_SEL = 'div[class*="TransactionListHeader__HeaderActions"]';
+  var SECTION_HEADER_SEL = 'div[class*="TransactionsList__StyledSectionHeader"], div[class*="SectionHeader"]';
+  var CSV_BUTTON_ID = "monarch-bulk-select-csv-button";
+  var STYLE_ID = "monarch-bulk-select-styles";
+  var SCAN_DELAY_MS = 120;
+  var MAX_SCAN_STEPS = 500;
+  var SELECTED_COUNT_RE = /(\d[\d,]*)\s+transactions?\s+selected/i;
+  var DATE_RE = /\b(?:Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|Jun(?:e)?|Jul(?:y)?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)\s+\d{1,2},\s+\d{4}\b/i;
+  var CSV_HEADERS = ["date", "merchant", "category", "account", "amount", "list_index"];
+  var CSV_STYLE = `
+  #${CSV_BUTTON_ID} {
+    border: 1px solid rgb(209 213 219);
+    border-radius: 8px;
+    background: white;
+    color: rgb(17 24 39);
+    cursor: pointer;
+    font: inherit;
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 20px;
+    min-height: 36px;
+    padding: 7px 12px;
+    white-space: nowrap;
+  }
+
+  #${CSV_BUTTON_ID}:hover {
+    background: rgb(249 250 251);
+  }
+
+  #${CSV_BUTTON_ID}:disabled {
+    cursor: wait;
+    opacity: 0.65;
+  }
+`;
   var rangeInProgress = false;
   var anchor = null;
   var pendingShiftAnchor = null;
@@ -82,8 +131,8 @@
     const value = getItem(checkbox)?.getAttribute("data-index");
     return value === null || value === undefined ? -1 : Number(value);
   };
-  var getScrollRoot = (checkbox) => {
-    let cur = getListRoot(checkbox)?.parentElement ?? checkbox.parentElement;
+  var findScrollRoot = (el) => {
+    let cur = el?.parentElement ?? null;
     while (cur) {
       if (cur.scrollHeight > cur.clientHeight + 10 && getComputedStyle(cur).overflowY === "auto") {
         return cur;
@@ -92,6 +141,7 @@
     }
     return null;
   };
+  var getScrollRoot = (checkbox) => findScrollRoot(getListRoot(checkbox) ?? checkbox);
   var getMountedRangeCheckboxes = (listRoot, lo, hi) => Array.from(listRoot.querySelectorAll(`${ROW_SEL} input[type="checkbox"]`)).map((checkbox) => ({ absIndex: getAbsIndex(checkbox), checkbox })).filter((item) => item.absIndex >= lo && item.absIndex <= hi);
   var syncRange = async (anchorState, to) => {
     const listRoot = getListRoot(to);
@@ -154,6 +204,185 @@
       rangeInProgress = false;
     }
   };
+  var cleanText = (el) => {
+    if (!el)
+      return "";
+    const clone = el.cloneNode(true);
+    clone.querySelectorAll('[role="img"], svg, .monarch-icon, .__react_component_tooltip, .contents').forEach((node) => node.remove());
+    return (clone.textContent ?? "").replace(/\s+/g, " ").trim();
+  };
+  var getFirstText = (root, selectors) => {
+    for (const selector of selectors) {
+      const text = cleanText(root.querySelector(selector));
+      if (text)
+        return text;
+    }
+    return "";
+  };
+  var parseDateHeader = (header) => {
+    const text = cleanText(header);
+    return text.match(DATE_RE)?.[0] ?? text;
+  };
+  var parseSelectedCount = () => {
+    const headers = Array.from(document.querySelectorAll(HEADER_SEL));
+    for (const header of headers) {
+      const match = header.innerText.match(SELECTED_COUNT_RE);
+      if (match?.[1])
+        return Number(match[1].replace(/,/g, ""));
+    }
+    return null;
+  };
+  var getBulkHeader = () => {
+    const headers = Array.from(document.querySelectorAll(HEADER_SEL));
+    return headers.find((header) => SELECTED_COUNT_RE.test(header.innerText)) ?? null;
+  };
+  var getBulkHeaderActions = () => {
+    const header = getBulkHeader();
+    return header?.querySelector(HEADER_ACTIONS_SEL) ?? null;
+  };
+  var parseExportRow = (item, row, date) => ({
+    listIndex: Number(item.getAttribute("data-index") ?? -1),
+    date,
+    merchant: getFirstText(row, [
+      '[class*="TransactionOverview__Name"] [class*="TransactionMerchantSelect__MerchantValue"]',
+      '[class*="TransactionOverview__Name"] [class*="FullScreenSelect__SelectValue"]'
+    ]),
+    category: getFirstText(row, [
+      '[class*="TransactionOverview__Category"] [class*="FullScreenSelect__SelectValue"]'
+    ]),
+    account: getFirstText(row, [
+      '[class*="TransactionOverview__AccountColumn"] [class*="TransactionAccount__Name"]',
+      '[class*="TransactionOverview__AccountColumn"] a'
+    ]),
+    amount: getFirstText(row, ['[class*="TransactionOverview__Amount"]'])
+  });
+  var getMountedSelectedRows = (listRoot) => {
+    const items = Array.from(listRoot.querySelectorAll("[data-index]")).sort((a, b) => Number(a.getAttribute("data-index") ?? 0) - Number(b.getAttribute("data-index") ?? 0));
+    const rows = [];
+    let currentDate = "";
+    for (const item of items) {
+      const header = item.querySelector(SECTION_HEADER_SEL);
+      if (header) {
+        currentDate = parseDateHeader(header);
+        continue;
+      }
+      const row = item.querySelector(ROW_SEL);
+      const checkbox = row?.querySelector('input[type="checkbox"]');
+      if (!row || !checkbox?.checked)
+        continue;
+      rows.push(parseExportRow(item, row, currentDate));
+    }
+    return rows;
+  };
+  var collectSelectedRows = async () => {
+    const listRoot = document.querySelector(LIST_SEL);
+    const scrollRoot = findScrollRoot(listRoot);
+    const expectedCount = parseSelectedCount();
+    if (!listRoot || !scrollRoot) {
+      throw new Error("could not find Monarch transaction list");
+    }
+    const rowsByIndex = new Map;
+    const originalTop = scrollRoot.scrollTop;
+    const scrollStep = Math.max(200, Math.floor(scrollRoot.clientHeight * 0.75));
+    try {
+      scrollRoot.scrollTop = 0;
+      await sleep(SCAN_DELAY_MS * 2);
+      for (let attempt = 0;attempt < MAX_SCAN_STEPS; attempt += 1) {
+        for (const row of getMountedSelectedRows(listRoot)) {
+          rowsByIndex.set(row.listIndex, row);
+        }
+        if (expectedCount !== null && rowsByIndex.size >= expectedCount)
+          break;
+        const maxTop = Math.max(0, scrollRoot.scrollHeight - scrollRoot.clientHeight);
+        if (scrollRoot.scrollTop >= maxTop - 2)
+          break;
+        const nextTop = Math.min(maxTop, scrollRoot.scrollTop + scrollStep);
+        if (Math.abs(nextTop - scrollRoot.scrollTop) < 2)
+          break;
+        scrollRoot.scrollTop = nextTop;
+        await sleep(SCAN_DELAY_MS);
+      }
+    } finally {
+      scrollRoot.scrollTop = originalTop;
+    }
+    return Array.from(rowsByIndex.values()).sort((a, b) => a.listIndex - b.listIndex);
+  };
+  var escapeCsv = (value) => {
+    const text = String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  var buildCsv = (rows) => {
+    const lines = [CSV_HEADERS.join(",")];
+    for (const row of rows) {
+      lines.push([row.date, row.merchant, row.category, row.account, row.amount, row.listIndex].map(escapeCsv).join(","));
+    }
+    return `${lines.join(`
+`)}
+`;
+  };
+  var downloadCsv = (rows) => {
+    const csv = buildCsv(rows);
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    const stamp = new Date().toISOString().slice(0, 10);
+    link.href = url;
+    link.download = `monarch-selected-transactions-${stamp}.csv`;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+  var handleCsvClick = async (button) => {
+    const originalText = button.textContent ?? "Download CSV";
+    const expectedCount = parseSelectedCount();
+    button.disabled = true;
+    button.textContent = "Preparing CSV...";
+    try {
+      const rows = await collectSelectedRows();
+      if (rows.length === 0) {
+        window.alert("No selected transactions found.");
+        return;
+      }
+      downloadCsv(rows);
+      if (expectedCount !== null && rows.length < expectedCount) {
+        window.alert(`Downloaded ${rows.length} of ${expectedCount} selected transactions.`);
+      }
+    } catch (error) {
+      console.error("[Monarch Bulk Select] CSV export failed", error);
+      window.alert("Could not export selected transactions. See console for details.");
+    } finally {
+      button.disabled = false;
+      button.textContent = originalText;
+      syncCsvButton();
+    }
+  };
+  var createCsvButton = () => {
+    const button = document.createElement("button");
+    button.id = CSV_BUTTON_ID;
+    button.type = "button";
+    button.textContent = "Download CSV";
+    button.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      handleCsvClick(button);
+    });
+    return button;
+  };
+  var syncCsvButton = () => {
+    const actions = getBulkHeaderActions();
+    const selectedCount = parseSelectedCount();
+    const existing = document.getElementById(CSV_BUTTON_ID);
+    if (!actions || selectedCount === null || selectedCount <= 0) {
+      existing?.remove();
+      return;
+    }
+    const button = existing instanceof HTMLButtonElement ? existing : createCsvButton();
+    if (!button.isConnected || button.parentElement !== actions) {
+      actions.prepend(button);
+    }
+  };
   document.addEventListener("click", (event) => {
     const checkbox = resolveCheckboxFromTarget(event.target);
     if (!checkbox)
@@ -201,4 +430,13 @@
     anchor = { absIndex };
     log("set anchor", anchor);
   }, true);
+  var main = () => {
+    injectCSS(STYLE_ID, CSV_STYLE);
+    syncCsvButton();
+    const observer = new MutationObserver(syncCsvButton);
+    observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    document.addEventListener("change", syncCsvButton, true);
+    document.addEventListener("click", () => window.setTimeout(syncCsvButton, 0), true);
+  };
+  main();
 })();

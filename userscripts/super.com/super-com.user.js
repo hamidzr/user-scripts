@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
-// @version              1.0.2
+// @version              1.0.3
 // ==/UserScript==
 
 'use strict';
@@ -97,10 +97,11 @@
     };
   };
 
+  // src/lib/text.ts
+  var normalizeWhitespace = (value) => (value ?? "").replace(/\s+/g, " ").trim();
+
   // src/lib/hotel-search.ts
-  var cleanPart = (value) => {
-    return (value ?? "").replace(/\s+/g, " ").trim();
-  };
+  var cleanPart = (value) => normalizeWhitespace(value);
   var uniqueParts = (parts) => {
     const seen = new Set;
     const out = [];
@@ -171,8 +172,9 @@
     const day = Number.parseInt(match.groups.day, 10);
     if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day))
       return null;
-    const utcMs = Date.UTC(year, month - 1, day);
-    const roundTrip = new Date(utcMs);
+    const roundTrip = new Date(0);
+    roundTrip.setUTCFullYear(year, month - 1, day);
+    const utcMs = roundTrip.getTime();
     if (roundTrip.getUTCFullYear() !== year || roundTrip.getUTCMonth() !== month - 1 || roundTrip.getUTCDate() !== day) {
       return null;
     }
@@ -331,6 +333,57 @@
   };
 
   // src/lib/hotel-search-ui.ts
+  var buildHotelSearchBarCss = (barSelector, opts = {}) => {
+    const border = opts.border ?? "1px solid rgba(26, 26, 26, 0.14)";
+    const boxShadow = opts.boxShadow ? `box-shadow: ${opts.boxShadow};` : "";
+    const color = opts.color ?? "#1a1a1a";
+    const fontSize = opts.fontSize ?? "12px";
+    const fontWeight = opts.fontWeight ?? 700;
+    const gap = opts.gap ?? "8px";
+    const hoverBackground = opts.hoverBackground ?? "#f3f8ff";
+    const hoverBorder = opts.hoverBorder ?? "#006ce4";
+    const hoverColor = opts.hoverColor ?? "#006ce4";
+    const linkGap = opts.linkGap ?? "0";
+    const marginTop = opts.marginTop ?? "12px";
+    const minHeight = opts.minHeight ?? "34px";
+    const padding = opts.padding ?? "0 12px";
+    const transition = opts.transition ? `transition: ${opts.transition};` : "";
+    return `
+  ${barSelector} {
+    display: flex;
+    flex-wrap: wrap;
+    gap: ${gap};
+    margin-top: ${marginTop};
+  }
+
+  ${barSelector} a {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: ${linkGap};
+    min-height: ${minHeight};
+    padding: ${padding};
+    border-radius: 999px;
+    border: ${border};
+    background: #fff;
+    color: ${color};
+    font-size: ${fontSize};
+    font-weight: ${fontWeight};
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    cursor: pointer;
+    ${boxShadow}
+    ${transition}
+  }
+
+  ${barSelector} a:hover {
+    border-color: ${hoverBorder};
+    color: ${hoverColor};
+    background: ${hoverBackground};
+  }
+`;
+  };
   var buildSignature = (links, getLinkText) => {
     return links.map((link) => `${getLinkText(link)}:${link.href}`).join("|");
   };
@@ -402,42 +455,139 @@
     }
   };
 
+  // src/super.com/super-com.helpers.ts
+  var HOTEL_LAUNCHER_PARAM_KEYS = [
+    "checkin",
+    "checkout",
+    "guests",
+    "platforms",
+    "tab",
+    "loc_name",
+    "loc_type",
+    "loc_country",
+    "loc_cc",
+    "loc_city",
+    "loc_state"
+  ];
+  var SUPER_LOOKUP_PARAM_KEYS = [
+    "super_lookup",
+    "super_query",
+    "super_name",
+    "super_city",
+    "super_country"
+  ];
+  var SUPER_TRAVEL_PARAM_KEYS = ["checkin_at", "checkout_at", "num_adults", "children"];
+  var COUNTRY_CODE_ALIASES = new Map([
+    ["u.k.", "gb"],
+    ["uk", "gb"],
+    ["u.s.", "us"],
+    ["u.s.a.", "us"],
+    ["usa", "us"],
+    ["united states of america", "us"],
+    ["u.a.e.", "ae"],
+    ["uae", "ae"]
+  ]);
+  var cleanPart2 = (value) => normalizeWhitespace(value);
+  var getPositiveGuestCount2 = (value) => {
+    const count = Number(value);
+    return Number.isFinite(count) && count > 0 ? String(Math.floor(count)) : "1";
+  };
+  var firstClean = (...values) => {
+    return values.map((value) => cleanPart2(value)).find(Boolean) ?? "";
+  };
+  var getDestinationParts = (destination) => {
+    return cleanPart2(destination).split(",").map((part) => cleanPart2(part)).filter(Boolean);
+  };
+  var hasIncomingTravelParams = (params) => {
+    return [...HOTEL_LAUNCHER_PARAM_KEYS, ...SUPER_TRAVEL_PARAM_KEYS].some((key) => params.has(key));
+  };
+  var slugify = (value) => {
+    return value.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+  };
+  var getCountryCode = (countryName) => {
+    const target = cleanPart2(countryName).toLowerCase();
+    if (!target)
+      return "";
+    const alias = COUNTRY_CODE_ALIASES.get(target);
+    if (alias)
+      return alias;
+    const dn = new Intl.DisplayNames(["en"], { type: "region" });
+    if (/^[a-z]{2}$/.test(target)) {
+      const codeName = cleanPart2(dn.of(target.toUpperCase())).toLowerCase();
+      if (codeName && codeName !== target && codeName !== "unknown region")
+        return target;
+    }
+    for (let i = 65;i <= 90; i += 1) {
+      for (let j = 65;j <= 90; j += 1) {
+        const code = String.fromCharCode(i, j);
+        if (cleanPart2(dn.of(code)).toLowerCase() === target)
+          return code.toLowerCase();
+      }
+    }
+    return "";
+  };
+  var getRedirectParams = (params) => {
+    const next = new URLSearchParams(params);
+    const checkin = cleanPart2(next.get("checkin_at") ?? next.get("checkin"));
+    const checkout = cleanPart2(next.get("checkout_at") ?? next.get("checkout"));
+    const adults = cleanPart2(next.get("num_adults") ?? next.get("guests"));
+    if (checkin)
+      next.set("checkin_at", checkin);
+    if (checkout)
+      next.set("checkout_at", checkout);
+    next.set("num_adults", getPositiveGuestCount2(adults));
+    if (!next.has("children"))
+      next.set("children", "[]");
+    if (!next.has("expand_params"))
+      next.set("expand_params", "false");
+    [...SUPER_LOOKUP_PARAM_KEYS, ...HOTEL_LAUNCHER_PARAM_KEYS].forEach((key) => {
+      next.delete(key);
+    });
+    return next;
+  };
+  var getSuperLookupRequest = (params) => {
+    const destination = cleanPart2(params.get("destination"));
+    const markedLookup = params.get("super_lookup") === "1";
+    if (!markedLookup && !(destination && hasIncomingTravelParams(params)))
+      return null;
+    const parts = getDestinationParts(destination);
+    const city = firstClean(params.get("super_city"), params.get("loc_city"), parts[0]);
+    const country = firstClean(params.get("super_country"), params.get("loc_country"), parts.length > 1 ? parts.at(-1) : "");
+    const countryCode = firstClean(params.get("loc_cc")) || getCountryCode(country);
+    const name = cleanPart2(params.get("super_name"));
+    const query = firstClean(params.get("super_query"), destination, [name, city].filter(Boolean).join(" "));
+    if (!query && !destination)
+      return null;
+    return {
+      city,
+      country,
+      countryCode,
+      destination,
+      name,
+      query,
+      redirectParams: getRedirectParams(params)
+    };
+  };
+
   // src/super.com/super-com.user.ts
   var SUPER_LINKS_STYLE_ID = "sc-search-links-style";
   var SUPER_LINKS_BAR_ID = "sc-search-links-bar";
-  var SUPER_LINKS_CSS = `
-  #${SUPER_LINKS_BAR_ID} {
-    display: flex;
-    gap: 8px;
-    margin-top: 10px;
-    flex-wrap: wrap;
-  }
-
-  #${SUPER_LINKS_BAR_ID} a {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 10px;
-    border-radius: 20px;
-    border: 1.5px solid #e0e0e0;
-    background: #fff;
-    color: #333;
-    font-size: 0.78rem;
-    font-weight: 600;
-    text-decoration: none;
-    cursor: pointer;
-    transition: border-color 0.15s, background 0.15s;
-    white-space: nowrap;
-  }
-
-  #${SUPER_LINKS_BAR_ID} a:hover {
-    border-color: #e91e8c;
-    color: #e91e8c;
-    background: #fff0f7;
-  }
-`;
+  var SUPER_LINKS_CSS = buildHotelSearchBarCss(`#${SUPER_LINKS_BAR_ID}`, {
+    border: "1.5px solid #e0e0e0",
+    color: "#333",
+    fontSize: "0.78rem",
+    fontWeight: 600,
+    hoverBackground: "#fff0f7",
+    hoverBorder: "#e91e8c",
+    hoverColor: "#e91e8c",
+    linkGap: "4px",
+    marginTop: "10px",
+    minHeight: "0",
+    padding: "4px 10px",
+    transition: "border-color 0.15s, background 0.15s"
+  });
   var priceMap = {};
-  var lookupStarted = false;
+  var lookupStartedKey = "";
   var norm = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
   var getTokens = (s) => norm(s).split(/\s+/).filter((token) => token.length >= 3);
   var countTokenOverlap = (left, right) => {
@@ -462,24 +612,9 @@
     const expectedTokenCount = getTokens(expected).length;
     return overlap >= 2 && expectedTokenCount > 0 && overlap >= expectedTokenCount - 1;
   };
-  var slugify = (s) => s.normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
   var getCookie = (name) => {
     const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
     return match ? decodeURIComponent(match[1]) : "";
-  };
-  var getCountryCode = (countryName) => {
-    const target = norm(countryName);
-    if (!target)
-      return "";
-    const dn = new Intl.DisplayNames(["en"], { type: "region" });
-    for (let i = 65;i <= 90; i++) {
-      for (let j = 65;j <= 90; j++) {
-        const code = String.fromCharCode(i, j);
-        if (norm(dn.of(code) ?? "") === target)
-          return code.toLowerCase();
-      }
-    }
-    return "";
   };
   var queryOmnisearch = async (query) => {
     const params = new URLSearchParams({
@@ -558,53 +693,37 @@
     const cityItems = await queryOmnisearch(cityQuery);
     return { hotel: null, region: pickCountryMatchedRegion(cityItems, city, country) };
   };
-  var maybeResolveHostelworldLookup = () => {
-    if (lookupStarted)
-      return;
+  var maybeResolveSuperLookup = () => {
     if (location.pathname !== "/home/travel")
       return;
-    const params = new URLSearchParams(location.search);
-    if (params.get("super_lookup") !== "1")
+    const attemptKey = `${location.pathname}?${location.search}`;
+    if (lookupStartedKey === attemptKey)
       return;
-    const destination = params.get("destination") ?? "";
-    const query = params.get("super_query") ?? [params.get("super_name") ?? "", params.get("super_city") ?? ""].filter(Boolean).join(" ");
-    const name = params.get("super_name") ?? "";
-    const city = params.get("super_city") ?? "";
-    const country = params.get("super_country") ?? "";
-    if (!query && !destination)
+    const request = getSuperLookupRequest(new URLSearchParams(location.search));
+    if (!request)
       return;
-    lookupStarted = true;
-    findLookupRegion(query || destination, name, city, country).then(({ hotel, region }) => {
-      params.delete("super_lookup");
-      params.delete("super_query");
-      params.delete("super_name");
-      params.delete("super_city");
-      params.delete("super_country");
+    lookupStartedKey = attemptKey;
+    findLookupRegion(request.query || request.destination, request.name, request.city, request.country).then(({ hotel, region }) => {
+      const params = new URLSearchParams(request.redirectParams);
       if (hotel?.hotel_id) {
         location.replace(`/travel/hotels/${hotel.hotel_id}?${params.toString()}`);
         return;
       }
-      const cityName = region?.name ?? city ?? "";
-      const countryCode = getCountryCode(country) || getCountryCode(region?.country ?? "") || "us";
+      const cityName = region?.name ?? request.city ?? "";
+      const countryCode = request.countryCode || getCountryCode(request.country) || getCountryCode(region?.country ?? "") || "us";
       const citySlug = cityName ? slugify(cityName) : "hotels";
       if (cityName) {
         const regionId = region?.id == null ? "0" : String(region.id);
         location.replace(`/travel/regions/${regionId}/cities/${countryCode}/${citySlug}-hotels?${params.toString()}`);
         return;
       }
-      const destinationSlug = destination ? slugify(destination.split(",")[0] ?? "") : "";
+      const destinationSlug = request.destination ? slugify(request.destination.split(",")[0] ?? "") : "";
       const fallbackSlug = destinationSlug || "hotels";
       location.replace(`/travel/regions/0/cities/${countryCode}/${fallbackSlug}-hotels?${params.toString()}`);
     }).catch(() => {
-      const fallbackParams = new URLSearchParams(location.search);
-      fallbackParams.delete("super_lookup");
-      fallbackParams.delete("super_query");
-      fallbackParams.delete("super_name");
-      fallbackParams.delete("super_city");
-      fallbackParams.delete("super_country");
-      const fallbackDestination = fallbackParams.get("destination") ?? "";
-      const fallbackSlug = fallbackDestination ? slugify(fallbackDestination.split(",")[0] ?? "") : "hotels";
-      const fallbackCountryCode = getCountryCode(country) || getCountryCode(fallbackParams.get("super_country") ?? "") || "us";
+      const fallbackParams = new URLSearchParams(request.redirectParams);
+      const fallbackSlug = request.destination ? slugify(request.destination.split(",")[0] ?? "") : "hotels";
+      const fallbackCountryCode = request.countryCode || getCountryCode(request.country) || getCountryCode(request.city) || "us";
       location.replace(`/travel/regions/0/cities/${fallbackCountryCode}/${fallbackSlug}-hotels?${fallbackParams.toString()}`);
     });
   };
@@ -643,6 +762,7 @@
     refreshMapPins();
   };
   var runEnhancements = () => {
+    maybeResolveSuperLookup();
     enhanceListCards();
     refreshMapPins();
     enhanceDetailPage();
@@ -658,8 +778,9 @@
     superObserver.observe(document.body, { childList: true, subtree: true });
     runEnhancements();
   };
+  maybeResolveSuperLookup();
   runWhenReady(() => {
-    maybeResolveHostelworldLookup();
+    maybeResolveSuperLookup();
     startObserver();
   });
   var mapFetched = false;

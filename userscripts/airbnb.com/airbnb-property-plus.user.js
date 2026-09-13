@@ -104,10 +104,13 @@
     };
   };
 
+  // src/lib/text.ts
+  var escapeHtml = (text) => String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
+  var escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  var normalizeWhitespace = (value) => (value ?? "").replace(/\s+/g, " ").trim();
+
   // src/lib/hotel-search.ts
-  var cleanPart = (value) => {
-    return (value ?? "").replace(/\s+/g, " ").trim();
-  };
+  var cleanPart = (value) => normalizeWhitespace(value);
   var uniqueParts = (parts) => {
     const seen = new Set;
     const out = [];
@@ -178,8 +181,9 @@
     const day = Number.parseInt(match.groups.day, 10);
     if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day))
       return null;
-    const utcMs = Date.UTC(year, month - 1, day);
-    const roundTrip = new Date(utcMs);
+    const roundTrip = new Date(0);
+    roundTrip.setUTCFullYear(year, month - 1, day);
+    const utcMs = roundTrip.getTime();
     if (roundTrip.getUTCFullYear() !== year || roundTrip.getUTCMonth() !== month - 1 || roundTrip.getUTCDate() !== day) {
       return null;
     }
@@ -553,10 +557,6 @@
       return false;
     }
   };
-
-  // src/lib/text.ts
-  var escapeHtml = (text) => String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
-  var escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   // src/airbnb.com/airbnb-property-plus.css
   var airbnb_property_plus_default = `#ab-property-plus-actions {

@@ -55,14 +55,39 @@
     }
     return ranks;
   };
-  var getColorForScore = (score) => {
+  var scoreToStars = (score) => 1 + 4 * score;
+  var computeReviewFinalScore = (lb, rel) => 0.75 * lb + 0.25 * rel;
+  var scoreLowerBoundEntries = (entries) => {
+    if (!entries.length)
+      return [];
+    const ranks = avgRanks(entries.map((entry) => entry.lb));
+    const total = entries.length;
+    return entries.map((entry, index) => {
+      const rel = total <= 1 ? 0.5 : ranks[index] / (total - 1);
+      const final = computeReviewFinalScore(entry.lb, rel);
+      return {
+        ...entry,
+        rel,
+        final,
+        finalStars: scoreToStars(final)
+      };
+    });
+  };
+  var scoreReviewEntries = (entries) => {
+    return scoreLowerBoundEntries(entries.map((entry) => ({
+      ...entry,
+      lb: wilsonLB(entry.stars, entry.reviewCount)
+    })));
+  };
+  var getColorForScore = (score, maxChannel = 255) => {
+    const max = Math.max(0, maxChannel);
     let r, g;
     if (score < 0.5) {
-      r = 255;
-      g = Math.round(score * 2 * 255);
+      r = max;
+      g = Math.round(score * 2 * max);
     } else {
-      r = Math.round((1 - (score - 0.5) * 2) * 255);
-      g = 255;
+      r = Math.round((1 - (score - 0.5) * 2) * max);
+      g = max;
     }
     return `rgb(${r}, ${g}, 0)`;
   };
@@ -405,7 +430,7 @@
     if (items.length === 0)
       return;
     ensureOrigIndexes(items);
-    const itemData = [];
+    const pending = [];
     items.forEach((item) => {
       if (item.dataset.vmProcessed === "true")
         return;
@@ -413,22 +438,15 @@
         return;
       }
       const { stars, reviewCount } = extractRatingData(item);
-      const lb = wilsonLB(stars, reviewCount);
-      itemData.push({ item, stars, reviewCount, lb });
+      pending.push({ item, stars, reviewCount });
     });
-    if (itemData.length === 0) {
+    if (pending.length === 0) {
       applySortMode();
       return;
     }
+    const itemData = scoreReviewEntries(pending);
     const N = itemData.length;
     const lbValues = itemData.map((d) => d.lb);
-    const ranks = avgRanks(lbValues);
-    const relScores = N === 1 ? [0.5] : ranks.map((r) => r / (N - 1));
-    itemData.forEach((d, i) => {
-      d.rel = relScores[i];
-      d.final = 0.75 * d.lb + 0.25 * d.rel;
-      d.finalStars = 1 + 4 * d.final;
-    });
     itemData.forEach((d) => {
       const opacity = 0.3 + 0.7 * d.rel;
       d.item.style.opacity = opacity.toFixed(2);
