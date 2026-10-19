@@ -23,10 +23,10 @@
         return resolve(el);
       const endTime = Date.now() + timeoutMs;
       const observer = new MutationObserver(() => {
-        const el2 = document.querySelector(selector);
-        if (el2) {
+        const el = document.querySelector(selector);
+        if (el) {
           observer.disconnect();
-          resolve(el2);
+          resolve(el);
         } else if (Date.now() > endTime) {
           observer.disconnect();
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
@@ -35,9 +35,9 @@
       observer.observe(document.body, { childList: true, subtree: true });
       setTimeout(() => {
         observer.disconnect();
-        const el2 = document.querySelector(selector);
-        if (el2)
-          resolve(el2);
+        const el = document.querySelector(selector);
+        if (el)
+          resolve(el);
         else
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
       }, timeoutMs);

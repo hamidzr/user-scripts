@@ -98,8 +98,8 @@
     if (!str)
       return 0;
     const trimmed = str.trim();
-    const multiplier = /k/i.test(trimmed) ? 1000 : 1;
-    return Math.round(parseFloat(trimmed.replace(/[,kK]/g, "")) * multiplier);
+    const multiplier = /m/i.test(trimmed) ? 1e6 : /k/i.test(trimmed) ? 1000 : 1;
+    return Math.round(parseFloat(trimmed.replace(/[,kKmM]/g, "")) * multiplier);
   };
 
   // src/lib/dom.ts
@@ -376,7 +376,7 @@
     if (!stars) {
       const itemText = item.textContent ?? "";
       const ratingMatch = itemText.match(/\b(\d(?:\.\d+)?)\s*(?:\n|$)/);
-      const nearSold = itemText.match(/(\d(?:\.\d+)?)\s*\n?\s*[0-9,.]+[KkMm]?\+?\s*sold/i);
+      const nearSold = itemText.match(/(\d(?:\.\d+)?)\s+[0-9,.]+[KkMm]?\+?\s*sold/i);
       if (nearSold)
         stars = parseFloat(nearSold[1]);
       else if (ratingMatch)

@@ -93,9 +93,9 @@
           return part;
         }
       }
-      const maybeInline2 = line.match(/^([A-Za-z]{1,6}[A-Za-z0-9.-]{0,4})/);
-      if (maybeInline2 && isSymbolToken(maybeInline2[1])) {
-        return maybeInline2[1];
+      const maybeInline = line.match(/^([A-Za-z]{1,6}[A-Za-z0-9.-]{0,4})/);
+      if (maybeInline && isSymbolToken(maybeInline[1])) {
+        return maybeInline[1];
       }
     }
     const maybeInline = cleanText(value).match(/^([^\s-]+)[\s\-]/);

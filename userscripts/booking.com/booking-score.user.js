@@ -286,8 +286,8 @@
     if (!str)
       return 0;
     const trimmed = str.trim();
-    const multiplier = /k/i.test(trimmed) ? 1000 : 1;
-    return Math.round(parseFloat(trimmed.replace(/[,kK]/g, "")) * multiplier);
+    const multiplier = /m/i.test(trimmed) ? 1e6 : /k/i.test(trimmed) ? 1000 : 1;
+    return Math.round(parseFloat(trimmed.replace(/[,kKmM]/g, "")) * multiplier);
   };
 
   // src/booking.com/booking-score.user.ts

@@ -287,7 +287,7 @@
     return `${base} ${hint}`.trim();
   };
   var getPositiveGuestCount = (guests) => {
-    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.floor(guests) : 1;
+    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.max(1, Math.floor(guests)) : 1;
   };
   var buildSuperSearchUrl = (ctx) => {
     const destination = getDestinationSearchText(ctx) || getFallbackDestination(ctx);
@@ -691,8 +691,8 @@
       return "";
     for (let depth = 0, root = titleEl.parentElement;root && depth < 4; depth += 1, root = root.parentElement) {
       const candidate = Array.from(root.querySelectorAll("span, div")).find((el) => {
-        const text2 = cleanGoogleTravelAddress(el.textContent ?? "");
-        return Boolean(text2 && text2.includes(",") && text2.length < 120 && !/website|directions|share|check availability|view more photos|review/i.test(text2));
+        const text = cleanGoogleTravelAddress(el.textContent ?? "");
+        return Boolean(text && text.includes(",") && text.length < 120 && !/website|directions|share|check availability|view more photos|review/i.test(text));
       });
       const text = cleanGoogleTravelAddress(candidate?.textContent ?? "");
       if (text)

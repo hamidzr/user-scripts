@@ -46,7 +46,7 @@
       return pollUntil(() => find(selector, { ...opts, timeout: 0 }), timeout);
     }
     if (opts?.text) {
-      return findAll(selector).find((el2) => el2.innerText.includes(opts.text)) ?? null;
+      return findAll(selector).find((el) => el.innerText.includes(opts.text)) ?? null;
     }
     const el = document.querySelector(selector);
     return el instanceof HTMLElement ? el : null;

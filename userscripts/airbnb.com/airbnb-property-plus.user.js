@@ -14,6 +14,31 @@
 'use strict';
 (() => {
 
+  // src/lib/clipboard.ts
+  var copyTextWithFallback = async (text, promptTitle) => {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(text);
+        return true;
+      } catch (_e) {}
+    }
+    try {
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "true");
+      ta.style.position = "fixed";
+      ta.style.left = "-9999px";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      if (ok)
+        return true;
+    } catch (_e) {}
+    window.prompt(promptTitle, text);
+    return false;
+  };
+
   // src/lib/dom.ts
   var injectCSS = (id, css) => {
     let style = document.getElementById(id);
@@ -270,7 +295,7 @@
     return `${base} ${hint}`.trim();
   };
   var getPositiveGuestCount = (guests) => {
-    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.floor(guests) : 1;
+    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.max(1, Math.floor(guests)) : 1;
   };
   var buildSuperSearchUrl = (ctx) => {
     const destination = getDestinationSearchText(ctx) || getFallbackDestination(ctx);
@@ -1478,29 +1503,6 @@
   var saveTemplates = (templates) => {
     writeJsonStore(TEMPLATES_KEY, templates);
   };
-  var copyTextWithFallback = async (text, promptTitle) => {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        return true;
-      } catch (_e) {}
-    }
-    try {
-      const ta = document.createElement("textarea");
-      ta.value = text;
-      ta.setAttribute("readonly", "true");
-      ta.style.position = "fixed";
-      ta.style.left = "-9999px";
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand("copy");
-      document.body.removeChild(ta);
-      if (ok)
-        return true;
-    } catch (_e) {}
-    window.prompt(promptTitle, text);
-    return false;
-  };
   var copyMessageText = (text) => {
     copyTextWithFallback(text, "Copy this message");
   };
@@ -1864,19 +1866,19 @@
     for (const item of byId)
       cards.add(item);
     if (cards.size) {
-      const seen2 = new Set;
-      const results2 = [];
+      const seen = new Set;
+      const results = [];
       for (const card of cards) {
         const parsed = parseReviewCard(card);
         if (!parsed)
           continue;
         const key = `${parsed.author}|${parsed.date}|${parsed.body.slice(0, 120)}`;
-        if (seen2.has(key))
+        if (seen.has(key))
           continue;
-        seen2.add(key);
-        results2.push(parsed);
+        seen.add(key);
+        results.push(parsed);
       }
-      return results2;
+      return results;
     }
     const anchors = Array.from(dialog.querySelectorAll('[aria-label*="star" i], [aria-label*="rating" i], time'));
     for (const anchor of anchors) {
@@ -1959,8 +1961,8 @@
   var copyAllReviewsFlow = async () => {
     const apiReviews = await loadAllReviewsFromApi();
     if (apiReviews?.length) {
-      const output2 = formatReviews(apiReviews);
-      await copyTextWithFallback(output2, "Copy all reviews");
+      const output = formatReviews(apiReviews);
+      await copyTextWithFallback(output, "Copy all reviews");
       return apiReviews.length;
     }
     const dialog = await openReviewsDialog();

@@ -221,7 +221,7 @@
     return `${base} ${hint}`.trim();
   };
   var getPositiveGuestCount = (guests) => {
-    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.floor(guests) : 1;
+    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.max(1, Math.floor(guests)) : 1;
   };
   var buildSuperSearchUrl = (ctx) => {
     const destination = getDestinationSearchText(ctx) || getFallbackDestination(ctx);

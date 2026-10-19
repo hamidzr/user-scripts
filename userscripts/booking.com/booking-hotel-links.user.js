@@ -49,10 +49,10 @@
         return resolve(el);
       const endTime = Date.now() + timeoutMs;
       const observer = new MutationObserver(() => {
-        const el2 = document.querySelector(selector);
-        if (el2) {
+        const el = document.querySelector(selector);
+        if (el) {
           observer.disconnect();
-          resolve(el2);
+          resolve(el);
         } else if (Date.now() > endTime) {
           observer.disconnect();
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
@@ -61,9 +61,9 @@
       observer.observe(document.body, { childList: true, subtree: true });
       setTimeout(() => {
         observer.disconnect();
-        const el2 = document.querySelector(selector);
-        if (el2)
-          resolve(el2);
+        const el = document.querySelector(selector);
+        if (el)
+          resolve(el);
         else
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
       }, timeoutMs);
@@ -314,7 +314,7 @@
     return `${base} ${hint}`.trim();
   };
   var getPositiveGuestCount = (guests) => {
-    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.floor(guests) : 1;
+    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.max(1, Math.floor(guests)) : 1;
   };
   var buildSuperSearchUrl = (ctx) => {
     const destination = getDestinationSearchText(ctx) || getFallbackDestination(ctx);

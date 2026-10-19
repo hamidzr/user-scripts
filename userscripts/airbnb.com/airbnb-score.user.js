@@ -22,10 +22,10 @@
         return resolve(el);
       const endTime = Date.now() + timeoutMs;
       const observer = new MutationObserver(() => {
-        const el2 = document.querySelector(selector);
-        if (el2) {
+        const el = document.querySelector(selector);
+        if (el) {
           observer.disconnect();
-          resolve(el2);
+          resolve(el);
         } else if (Date.now() > endTime) {
           observer.disconnect();
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
@@ -34,9 +34,9 @@
       observer.observe(document.body, { childList: true, subtree: true });
       setTimeout(() => {
         observer.disconnect();
-        const el2 = document.querySelector(selector);
-        if (el2)
-          resolve(el2);
+        const el = document.querySelector(selector);
+        if (el)
+          resolve(el);
         else
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
       }, timeoutMs);
@@ -1070,8 +1070,8 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     if (!str)
       return 0;
     const trimmed = str.trim();
-    const multiplier = /k/i.test(trimmed) ? 1000 : 1;
-    return Math.round(parseFloat(trimmed.replace(/[,kK]/g, "")) * multiplier);
+    const multiplier = /m/i.test(trimmed) ? 1e6 : /k/i.test(trimmed) ? 1000 : 1;
+    return Math.round(parseFloat(trimmed.replace(/[,kKmM]/g, "")) * multiplier);
   };
 
   // src/lib/store.ts
@@ -1362,7 +1362,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     return ["react-application", "site-content", "layout_container"].includes(el.id);
   };
   function findAvailableSimilarDatesSection() {
-    const heading = Array.from(document.querySelectorAll("h1, h2, h3")).find((el2) => /available for similar dates/i.test(el2.textContent || ""));
+    const heading = Array.from(document.querySelectorAll("h1, h2, h3")).find((el) => /available for similar dates/i.test(el.textContent || ""));
     if (!heading)
       return null;
     const ancestors = [];

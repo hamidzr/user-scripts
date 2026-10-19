@@ -261,7 +261,7 @@
     return `${base} ${hint}`.trim();
   };
   var getPositiveGuestCount = (guests) => {
-    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.floor(guests) : 1;
+    return Number.isFinite(guests) && (guests ?? 0) > 0 ? Math.max(1, Math.floor(guests)) : 1;
   };
   var buildSuperSearchUrl = (ctx) => {
     const destination = getDestinationSearchText(ctx) || getFallbackDestination(ctx);
@@ -490,7 +490,7 @@
   var cleanPart2 = (value) => normalizeWhitespace(value);
   var getPositiveGuestCount2 = (value) => {
     const count = Number(value);
-    return Number.isFinite(count) && count > 0 ? String(Math.floor(count)) : "1";
+    return Number.isFinite(count) && count > 0 ? String(Math.max(1, Math.floor(count))) : "1";
   };
   var firstClean = (...values) => {
     return values.map((value) => cleanPart2(value)).find(Boolean) ?? "";

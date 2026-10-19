@@ -25,10 +25,10 @@
         return resolve(el);
       const endTime = Date.now() + timeoutMs;
       const observer = new MutationObserver(() => {
-        const el2 = document.querySelector(selector);
-        if (el2) {
+        const el = document.querySelector(selector);
+        if (el) {
           observer.disconnect();
-          resolve(el2);
+          resolve(el);
         } else if (Date.now() > endTime) {
           observer.disconnect();
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
@@ -37,9 +37,9 @@
       observer.observe(document.body, { childList: true, subtree: true });
       setTimeout(() => {
         observer.disconnect();
-        const el2 = document.querySelector(selector);
-        if (el2)
-          resolve(el2);
+        const el = document.querySelector(selector);
+        if (el)
+          resolve(el);
         else
           reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
       }, timeoutMs);
@@ -115,10 +115,36 @@
   };
 
   // src/lib/text.ts
+  var escapeHtml = (text) => String(text).replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#39;");
   var escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
   // src/ebay.com/ebay-search.helpers.ts
   var shouldPreserveSearchFilters = (pathname) => pathname === "/sch/i.html";
+  var NEG_OPEN = '<span style="background-color: #ff6b6b; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold;">';
+  var POS_OPEN = '<span style="background-color: #ffeb3b; color: #000; padding: 2px 4px; border-radius: 2px;">';
+  var buildHighlightedHtml = (text, positiveKeywords, negativeKeywords) => {
+    let workingText = text;
+    negativeKeywords.forEach((keyword) => {
+      if (!keyword)
+        return;
+      const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
+      workingText = workingText.replace(regex, "##NEG_START##$1##NEG_END##");
+    });
+    positiveKeywords.forEach((keyword) => {
+      if (!keyword)
+        return;
+      const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
+      workingText = workingText.replace(regex, (_match, p1, offset) => {
+        const beforeText = workingText.substring(0, offset);
+        const negStartCount = (beforeText.match(/##NEG_START##/g) ?? []).length;
+        const negEndCount = (beforeText.match(/##NEG_END##/g) ?? []).length;
+        if (negStartCount > negEndCount)
+          return p1;
+        return "##POS_START##" + p1 + "##POS_END##";
+      });
+    });
+    return escapeHtml(workingText).replace(/##NEG_START##/g, NEG_OPEN).replace(/##NEG_END##/g, "</span>").replace(/##POS_START##/g, POS_OPEN).replace(/##POS_END##/g, "</span>");
+  };
 
   // src/ebay.com/ebay-search.user.ts
   var hasInitialized = false;
@@ -215,27 +241,7 @@
         return;
       }
       const text = titleSpan.textContent;
-      let workingText = text;
-      negativeKeywords.forEach((keyword) => {
-        if (!keyword)
-          return;
-        const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
-        workingText = workingText.replace(regex, "##NEG_START##$1##NEG_END##");
-      });
-      positiveKeywords.forEach((keyword) => {
-        if (!keyword)
-          return;
-        const regex = new RegExp(`(${escapeRegExp(keyword)})`, "gi");
-        workingText = workingText.replace(regex, (_match, p1, offset) => {
-          const beforeText = workingText.substring(0, offset);
-          const negStartCount = (beforeText.match(/##NEG_START##/g) ?? []).length;
-          const negEndCount = (beforeText.match(/##NEG_END##/g) ?? []).length;
-          if (negStartCount > negEndCount)
-            return p1;
-          return "##POS_START##" + p1 + "##POS_END##";
-        });
-      });
-      const html = workingText.replace(/##NEG_START##/g, '<span style="background-color: #ff6b6b; color: white; padding: 2px 4px; border-radius: 2px; font-weight: bold;">').replace(/##NEG_END##/g, "</span>").replace(/##POS_START##/g, '<span style="background-color: #ffeb3b; color: #000; padding: 2px 4px; border-radius: 2px;">').replace(/##POS_END##/g, "</span>");
+      const html = buildHighlightedHtml(text, positiveKeywords, negativeKeywords);
       if (html !== text) {
         titleSpan.innerHTML = html;
         titleSpan.setAttribute("data-highlighted", "true");
