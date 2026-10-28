@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
-// @version              1.1.0
+// @version              1.1.1
 // ==/UserScript==
 
 'use strict';
@@ -41,6 +41,27 @@
 
   // src/app.monarch.com/monarch-bulk-select.user.ts
   var exports_monarch_bulk_select_user = {};
+
+  // src/lib/csv.ts
+  var escapeCsv = (value) => {
+    const text = String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+  };
+  var toCsv = (header, rows) => [header, ...rows].map((row) => row.map(escapeCsv).join(",")).join(`
+`) + `
+`;
+  var downloadCsv = (filename, csv) => {
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
 
   // src/lib/dom.ts
   var injectCSS = (id, css) => {
@@ -307,32 +328,17 @@
     }
     return Array.from(rowsByIndex.values()).sort((a, b) => a.listIndex - b.listIndex);
   };
-  var escapeCsv = (value) => {
-    const text = String(value);
-    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
-  };
-  var buildCsv = (rows) => {
-    const lines = [CSV_HEADERS.join(",")];
-    for (const row of rows) {
-      lines.push([row.date, row.merchant, row.category, row.account, row.amount, row.listIndex].map(escapeCsv).join(","));
-    }
-    return `${lines.join(`
-`)}
-`;
-  };
-  var downloadCsv = (rows) => {
-    const csv = buildCsv(rows);
-    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
+  var exportRowsCsv = (rows) => {
+    const csv = toCsv(CSV_HEADERS, rows.map((row) => [
+      row.date,
+      row.merchant,
+      row.category,
+      row.account,
+      row.amount,
+      row.listIndex
+    ]));
     const stamp = new Date().toISOString().slice(0, 10);
-    link.href = url;
-    link.download = `monarch-selected-transactions-${stamp}.csv`;
-    link.style.display = "none";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    downloadCsv(`monarch-selected-transactions-${stamp}.csv`, csv);
   };
   var handleCsvClick = async (button) => {
     const originalText = button.textContent ?? "Download CSV";
@@ -345,7 +351,7 @@
         window.alert("No selected transactions found.");
         return;
       }
-      downloadCsv(rows);
+      exportRowsCsv(rows);
       if (expectedCount !== null && rows.length < expectedCount) {
         window.alert(`Downloaded ${rows.length} of ${expectedCount} selected transactions.`);
       }

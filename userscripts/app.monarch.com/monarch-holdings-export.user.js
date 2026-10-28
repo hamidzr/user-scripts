@@ -1,15 +1,15 @@
 // ==UserScript==
 // @name                 Monarch Holdings Export
 // @author               AZ
-// @description          export holdings data from Monarch holdings page to csv
+// @description          add an Export CSV button to the Monarch investment holdings page
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-holdings-export.user.js
-// @grant                GM_registerMenuCommand
-// @match                https://app.monarch.com/investments/holdings/market*
-// @match                https://app.monarchmoney.com/investments/holdings/market*
+// @grant                none
+// @match                https://app.monarch.com/*
+// @match                https://app.monarchmoney.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-holdings-export.user.js
-// @version              1.0.0
+// @version              1.1.0
 // ==/UserScript==
 
 'use strict';
@@ -42,243 +42,266 @@
   // src/app.monarch.com/monarch-holdings-export.user.ts
   var exports_monarch_holdings_export_user = {};
 
-  // src/lib/download.ts
-  var stringify = (val) => {
-    if (typeof val === "string")
-      return val;
-    if (Array.isArray(val))
-      return val.map(stringify).join(`
-`);
-    if (val instanceof HTMLElement)
-      return val.innerText;
-    return JSON.stringify(val);
+  // src/lib/csv.ts
+  var escapeCsv = (value) => {
+    const text = String(value);
+    return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
   };
-  var download = (filename, text) => {
-    const content = stringify(text);
-    const el = document.createElement("a");
-    el.setAttribute("href", "data:text/plain;charset=utf-8," + encodeURIComponent(content));
-    el.setAttribute("download", filename);
-    el.style.display = "none";
-    document.body.appendChild(el);
-    el.click();
-    document.body.removeChild(el);
+  var toCsv = (header, rows) => [header, ...rows].map((row) => row.map(escapeCsv).join(",")).join(`
+`) + `
+`;
+  var downloadCsv = (filename, csv) => {
+    const blob = new Blob(["\uFEFF", csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.style.display = "none";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  // src/lib/dom.ts
+  var createElement = (tag, attrs, children) => {
+    const el = document.createElement(tag);
+    if (attrs) {
+      for (const [key, value] of Object.entries(attrs)) {
+        if (key === "className") {
+          el.className = value;
+        } else {
+          el[key] = value;
+        }
+      }
+    }
+    if (children) {
+      for (const child of children) {
+        if (typeof child === "string") {
+          el.appendChild(document.createTextNode(child));
+        } else {
+          el.appendChild(child);
+        }
+      }
+    }
+    return el;
+  };
+
+  // src/lib/dom-observe.ts
+  var DEFAULT_INIT = {
+    childList: true,
+    subtree: true
+  };
+  var observeDomChanges = (run, opts) => {
+    let timer = null;
+    let disconnectTimer = null;
+    let currentTarget = opts?.root ?? null;
+    let currentInit = opts?.observerInit ?? DEFAULT_INIT;
+    const disconnect = () => {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      if (disconnectTimer) {
+        window.clearTimeout(disconnectTimer);
+        disconnectTimer = null;
+      }
+      observer.disconnect();
+    };
+    const refreshDisconnectTimer = () => {
+      if (disconnectTimer)
+        window.clearTimeout(disconnectTimer);
+      if (!opts?.disconnectAfterMs)
+        return;
+      disconnectTimer = window.setTimeout(() => {
+        disconnect();
+      }, opts.disconnectAfterMs);
+    };
+    const scheduleRun = () => {
+      if (timer)
+        window.clearTimeout(timer);
+      const debounceMs = opts?.debounceMs ?? 0;
+      if (debounceMs <= 0) {
+        run();
+        refreshDisconnectTimer();
+        return;
+      }
+      timer = window.setTimeout(() => {
+        timer = null;
+        run();
+        refreshDisconnectTimer();
+      }, debounceMs);
+    };
+    const observer = new MutationObserver((mutations) => {
+      if (opts?.shouldRun && !opts.shouldRun(mutations))
+        return;
+      scheduleRun();
+    });
+    const observe = (target, options) => {
+      const nextTarget = target ?? currentTarget ?? document.body;
+      if (!nextTarget)
+        return;
+      currentTarget = nextTarget;
+      currentInit = options ?? currentInit;
+      observer.disconnect();
+      observer.observe(nextTarget, currentInit);
+      refreshDisconnectTimer();
+    };
+    if (opts?.runImmediately)
+      scheduleRun();
+    return {
+      disconnect,
+      observe
+    };
+  };
+
+  // src/lib/page-lifecycle.ts
+  var KEY = "__lbLocationChangeController__";
+  var scheduleListener = (listener) => {
+    const nextHref = window.location.href;
+    if (nextHref === listener.lastHref)
+      return;
+    listener.lastHref = nextHref;
+    if (listener.timer)
+      window.clearTimeout(listener.timer);
+    if (listener.debounceMs <= 0) {
+      listener.callback();
+      return;
+    }
+    listener.timer = window.setTimeout(() => {
+      listener.timer = null;
+      listener.callback();
+    }, listener.debounceMs);
+  };
+  var ensureController = () => {
+    const existing = window[KEY];
+    if (existing)
+      return existing;
+    const pushState = history.pushState.bind(history);
+    const replaceState = history.replaceState.bind(history);
+    const controller = {
+      listeners: new Set,
+      pushState,
+      replaceState,
+      notify: () => {
+        controller.listeners.forEach((listener) => {
+          scheduleListener(listener);
+        });
+      },
+      restore: () => {
+        history.pushState = pushState;
+        history.replaceState = replaceState;
+        window.removeEventListener("popstate", controller.onPopState);
+        if ("navigation" in window) {
+          window.navigation.removeEventListener("navigatesuccess", controller.onPopState);
+        }
+        delete window[KEY];
+      },
+      onPopState: () => {
+        controller.notify();
+      }
+    };
+    history.pushState = (...args) => {
+      pushState(...args);
+      controller.notify();
+    };
+    history.replaceState = (...args) => {
+      replaceState(...args);
+      controller.notify();
+    };
+    window.addEventListener("popstate", controller.onPopState);
+    if ("navigation" in window) {
+      window.navigation.addEventListener("navigatesuccess", controller.onPopState);
+    }
+    window[KEY] = controller;
+    return controller;
+  };
+  var watchLocationChange = (callback, opts) => {
+    const controller = ensureController();
+    const listener = {
+      callback,
+      debounceMs: opts?.debounceMs ?? 0,
+      lastHref: window.location.href,
+      timer: null
+    };
+    controller.listeners.add(listener);
+    return () => {
+      if (listener.timer)
+        window.clearTimeout(listener.timer);
+      controller.listeners.delete(listener);
+      if (controller.listeners.size === 0)
+        controller.restore();
+    };
+  };
+
+  // src/lib/text.ts
+  var normalizeWhitespace = (value) => (value ?? "").replace(/\s+/g, " ").trim();
+
+  // src/app.monarch.com/monarch-holdings-export.helpers.ts
+  var MONEY_RE = /^(-?)\$?(-?)([\d,]+(?:\.\d+)?)$/;
+  var plainNumber = (text) => {
+    const match = MONEY_RE.exec(text.trim());
+    if (!match)
+      return text.trim();
+    const [, sign, innerSign, digits] = match;
+    return `${sign || innerSign}${digits.replace(/,/g, "")}`;
   };
 
   // src/app.monarch.com/monarch-holdings-export.user.ts
-  var HOLDINGS_PATH = "/investments/holdings/market";
-  var MENU_LABEL = "Monarch: Export holdings CSV";
-  var CSV_HEADER = ["Symbol", "Balance", "Price", "Quantity", "Value", "Weight"];
-  var HEADER_MATCHES = {
-    symbol: ["symbol", "sec ticker", "ticker", "security"],
-    balance: ["balance", "market value", "value", "position", "amount"],
-    price: ["price", "share price", "last"],
-    quantity: ["quantity", "qty", "shares"],
-    value: ["value", "market value", "position"],
-    weight: ["weight", "allocation", "percent", "allocation %"]
+  var HOLDINGS_PATH = "/investments/holdings";
+  var BUTTON_ID = "monarch-holdings-export-button";
+  var sels = {
+    addHolding: 'a[href$="/add-holding"]',
+    text: '[data-sc-tw="Text__Text"]'
   };
-  var cleanText = (value) => value.replace(/\s+/g, " ").trim();
-  var isSymbolToken = (value) => {
-    const trimmed = value.trim();
-    const normalized = trimmed.replace(/^[^A-Za-z0-9]+/, "").replace(/[^A-Za-z0-9.-]+$/, "");
-    return /^[A-Za-z]{1,6}[A-Za-z0-9]{0,4}(?:[.-][A-Za-z0-9]{1,4})?$/.test(normalized);
-  };
-  var pickSymbol = (value) => {
-    const cleanSource = value.replace(/\r/g, "");
-    const lines = cleanSource.split(`
-`).map((line) => cleanText(line)).filter(Boolean);
-    for (const line of lines) {
-      const parts = line.split(/\s+/);
-      for (const part of parts) {
-        if (isSymbolToken(part)) {
-          return part;
-        }
+  var cellText = (el) => normalizeWhitespace((el?.innerText ?? "").replace(/[\uE000-\uF8FF]/g, ""));
+  var findHoldingsTable = () => Array.from(document.querySelectorAll("table")).find((table) => cellText(table.tHead?.rows[0]?.cells[0]) === "Security") ?? null;
+  var readHoldings = (table) => {
+    const labels = Array.from(table.tHead?.rows[0]?.cells ?? []).map(cellText);
+    const valueCols = labels.map((label, idx) => idx > 0 && label ? idx : -1).filter((i) => i > 0);
+    const header = ["Group", "Symbol", "Name", ...valueCols.map((idx) => labels[idx])];
+    const rows = [];
+    let group = "";
+    for (const row of Array.from(table.tBodies[0]?.rows ?? [])) {
+      const values = valueCols.map((idx) => cellText(row.cells[idx]));
+      if (values.every((value) => !value)) {
+        group = cellText(row.cells[0]);
+        continue;
       }
-      const maybeInline = line.match(/^([A-Za-z]{1,6}[A-Za-z0-9.-]{0,4})/);
-      if (maybeInline && isSymbolToken(maybeInline[1])) {
-        return maybeInline[1];
-      }
+      const [first = "", second = ""] = Array.from(row.cells[0]?.querySelectorAll(sels.text) ?? []).map(cellText);
+      const [symbol, name] = second ? [first, second] : ["", first || cellText(row.cells[0])];
+      rows.push([group, symbol, name, ...values.map(plainNumber)]);
     }
-    const maybeInline = cleanText(value).match(/^([^\s-]+)[\s\-]/);
-    if (maybeInline && isSymbolToken(maybeInline[1])) {
-      return maybeInline[1];
-    }
-    return cleanText(value).split(/\s+/)[0] ?? "";
+    return { header, rows };
   };
-  var escapeCsv = (value) => {
-    if (value.includes(",") || value.includes('"') || value.includes(`
-`) || value.includes("\r")) {
-      return `"${value.replace(/"/g, '""')}"`;
-    }
-    return value;
-  };
-  var isHoldingsPage = () => {
-    const pathname = window.location.pathname;
-    return pathname === HOLDINGS_PATH || pathname.startsWith(`${HOLDINGS_PATH}/`);
-  };
-  var normalizeHeader = (value) => cleanText(value).toLowerCase();
-  var findColumn = (headers, key) => {
-    const keys = HEADER_MATCHES[key];
-    for (let idx = 0;idx < headers.length; idx += 1) {
-      const header = normalizeHeader(headers[idx] ?? "");
-      if (keys.some((match) => header.includes(match))) {
-        return idx;
-      }
-    }
-    return null;
-  };
-  var buildColumnMap = (headers) => ({
-    symbol: findColumn(headers, "symbol"),
-    balance: findColumn(headers, "balance"),
-    price: findColumn(headers, "price"),
-    quantity: findColumn(headers, "quantity"),
-    value: findColumn(headers, "value"),
-    weight: findColumn(headers, "weight")
-  });
-  var rowToFields = (cells, map) => {
-    const rawSymbol = (map.symbol !== null ? cleanText(cells[map.symbol] ?? "") : "").trim();
-    const symbol = pickSymbol(rawSymbol).trim();
-    if (!symbol)
-      return null;
-    const get = (idx) => (idx === null ? "" : cleanText(cells[idx] ?? "")).trim();
-    const balance = get(map.balance);
-    const value = get(map.value) || balance;
-    const row = {
-      symbol,
-      balance,
-      price: get(map.price),
-      quantity: get(map.quantity),
-      value,
-      weight: get(map.weight)
-    };
-    return row;
-  };
-  var cellsFromElement = (row) => {
-    const direct = Array.from(row.children).map((el) => cleanText(el.innerText ?? el.textContent ?? ""));
-    if (direct.length > 1)
-      return direct;
-    const fallback = Array.from(row.querySelectorAll('td, th, [role="gridcell"], [role="rowheader"]')).map((el) => cleanText(el.innerText ?? el.textContent ?? ""));
-    return fallback.length > 0 ? fallback : direct;
-  };
-  var gatherFromTable = () => {
-    const tables = Array.from(document.querySelectorAll("table"));
-    const out = [];
-    for (const table of tables) {
-      const headerCells = table.querySelectorAll("th");
-      const headers = Array.from(headerCells).map((el) => cleanText(el.textContent ?? ""));
-      if (!headers.length)
-        continue;
-      const map = buildColumnMap(headers);
-      if (!Object.values(map).some((idx) => idx !== null))
-        continue;
-      const bodyRows = table.tBodies.length > 0 ? Array.from(table.tBodies[0].querySelectorAll("tr")) : Array.from(table.querySelectorAll("tr")).filter((row) => row.parentElement?.tagName !== "THEAD");
-      bodyRows.forEach((row) => {
-        const cellValues = cellsFromElement(row);
-        if (cellValues.length < 3)
-          return;
-        const holding = rowToFields(cellValues, map);
-        if (!holding)
-          return;
-        out.push(holding);
-      });
-    }
-    return out;
-  };
-  var gatherFromRoleGrid = () => {
-    const grids = Array.from(document.querySelectorAll('[role="grid"], [role="table"]'));
-    const out = [];
-    for (const grid of grids) {
-      const rows = Array.from(grid.querySelectorAll('[role="row"]'));
-      if (rows.length < 2)
-        continue;
-      const headerRow = rows.find((row) => row.querySelector('[role="columnheader"], th') !== null);
-      if (!headerRow)
-        continue;
-      const headers = cellsFromElement(headerRow);
-      const map = buildColumnMap(headers);
-      if (!Object.values(map).some((idx) => idx !== null))
-        continue;
-      rows.filter((row) => row !== headerRow).forEach((row) => {
-        const cellValues = cellsFromElement(row);
-        if (!cellValues.length)
-          return;
-        const holding = rowToFields(cellValues, map);
-        if (holding)
-          out.push(holding);
-      });
-    }
-    return out;
-  };
-  var isPotentialFallbackRow = (cells) => cells.length >= 3;
-  var parseFallbackRows = () => {
-    const rows = Array.from(document.querySelectorAll("[data-index], [data-rowindex], .row"));
-    const out = [];
-    for (const row of rows) {
-      const cells = cellsFromElement(row);
-      if (!isPotentialFallbackRow(cells))
-        continue;
-      const symbol = pickSymbol(cells[0] ?? "");
-      if (!symbol)
-        continue;
-      out.push({
-        symbol,
-        balance: cells[1] ?? "",
-        price: cells[2] ?? "",
-        quantity: cells[3] ?? "",
-        value: cells[4] ?? "",
-        weight: cells[5] ?? ""
-      });
-    }
-    return out;
-  };
-  var uniqueRows = (rows) => {
-    const seen = new Set;
-    const out = [];
-    rows.forEach((row) => {
-      const key = `${row.symbol}|${row.balance}|${row.price}|${row.quantity}|${row.value}|${row.weight}`;
-      if (seen.has(key))
-        return;
-      seen.add(key);
-      out.push(row);
-    });
-    return out;
-  };
-  var collectRows = () => {
-    const rows = [...gatherFromTable(), ...gatherFromRoleGrid(), ...parseFallbackRows()];
-    return uniqueRows(rows);
-  };
-  var buildCsv = (rows) => {
-    const lines = [
-      CSV_HEADER.map((field) => `${field}`).map(escapeCsv).join(",")
-    ];
-    rows.forEach((row) => {
-      lines.push([row.symbol, row.balance, row.price, row.quantity, row.value, row.weight].map(escapeCsv).join(","));
-    });
-    return `${lines.join(`
-`)}
-`;
-  };
-  var filename = () => {
-    const now = new Date;
-    const date = now.toISOString().slice(0, 10);
-    return `monarch-holdings-${date}.csv`;
-  };
-  var exportHoldingsCsv = () => {
-    const rows = collectRows();
-    if (!rows.length) {
-      window.alert("No holdings rows found. Make sure you are on the Holdings page and data is loaded.");
+  var exportHoldings = () => {
+    const table = findHoldingsTable();
+    const holdings = table ? readHoldings(table) : null;
+    if (!holdings?.rows.length) {
+      window.alert("No holdings found. Wait for the holdings table to load and try again.");
       return;
     }
-    const csv = buildCsv(rows);
-    download(filename(), csv);
+    const date = new Date().toLocaleDateString("en-CA");
+    downloadCsv(`monarch-holdings-${date}.csv`, toCsv(holdings.header, holdings.rows));
   };
-  var registerMenu = () => {
-    if (!isHoldingsPage())
+  var syncButton = () => {
+    const toolbar = document.querySelector(sels.addHolding)?.parentElement;
+    if (!toolbar || document.getElementById(BUTTON_ID))
       return;
-    if (typeof GM_registerMenuCommand !== "function")
-      return;
-    GM_registerMenuCommand(MENU_LABEL, () => {
-      exportHoldingsCsv();
-    });
+    const button = createElement("button", { id: BUTTON_ID, type: "button", className: toolbar.querySelector("button")?.className ?? "" }, ["Export CSV"]);
+    button.addEventListener("click", exportHoldings);
+    toolbar.prepend(button);
   };
-  registerMenu();
+  var isHoldingsPage = () => window.location.pathname.startsWith(HOLDINGS_PATH);
+  var observer = observeDomChanges(syncButton, { debounceMs: 250 });
+  var onRoute = () => {
+    if (!isHoldingsPage()) {
+      observer.disconnect();
+      return;
+    }
+    observer.observe(document.body);
+    syncButton();
+  };
+  watchLocationChange(onRoute);
+  onRoute();
 })();

@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-hotel-links.user.js
-// @version              0.1.1
+// @version              0.1.3
 // ==/UserScript==
 
 'use strict';
@@ -42,33 +42,6 @@
   var exports_booking_hotel_links_user = {};
 
   // src/lib/dom.ts
-  var waitForEl = (selector, timeoutMs = 5000) => {
-    return new Promise((resolve, reject) => {
-      const el = document.querySelector(selector);
-      if (el)
-        return resolve(el);
-      const endTime = Date.now() + timeoutMs;
-      const observer = new MutationObserver(() => {
-        const el = document.querySelector(selector);
-        if (el) {
-          observer.disconnect();
-          resolve(el);
-        } else if (Date.now() > endTime) {
-          observer.disconnect();
-          reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
-        }
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-      setTimeout(() => {
-        observer.disconnect();
-        const el = document.querySelector(selector);
-        if (el)
-          resolve(el);
-        else
-          reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
-      }, timeoutMs);
-    });
-  };
   var injectCSS = (id, css) => {
     let style = document.getElementById(id);
     if (style) {
@@ -512,15 +485,21 @@
   var cleanText = (value) => {
     return value.replace(/\s+/g, " ").trim();
   };
-  var cleanBookingHotelName = (value) => {
-    let next = cleanText(value).replace(/\s+Deals$/i, "").trim();
+  var stripTrailingParens = (value) => {
+    let next = value;
     while (/\s+\([^)]*\)$/i.test(next)) {
       next = next.replace(/\s+\([^)]*\)$/i, "").trim();
     }
     return next;
   };
-  var getBookingMetaTitleParts = (value) => {
-    const parts = cleanText(value).split(",").map((part) => cleanText(part));
+  var cleanBookingHotelName = (value) => {
+    return stripTrailingParens(cleanText(value).replace(/\s+Deals$/i, "").trim());
+  };
+  var getBookingMetaTitleParts = (value, knownName = "") => {
+    const text = stripTrailingParens(cleanText(value));
+    const name = cleanText(knownName);
+    const split = (part) => part.split(",").map((item) => cleanText(item));
+    const parts = name && text.startsWith(`${name},`) ? [name, ...split(text.slice(name.length + 1))] : split(text);
     return {
       propertyName: parts[0] ?? "",
       city: parts[1] ?? "",
@@ -575,8 +554,8 @@
     hoverBorder: "#006ce4",
     hoverColor: "#006ce4"
   });
-  var getMetaTitleParts = () => {
-    return getBookingMetaTitleParts(document.querySelector('meta[property="og:title"]')?.content ?? "");
+  var getMetaTitleParts = (knownName) => {
+    return getBookingMetaTitleParts(document.querySelector('meta[property="og:title"]')?.content ?? "", knownName);
   };
   var getJsonLdContext = () => {
     return getBookingHotelJsonLdData(Array.from(document.querySelectorAll('script[type="application/ld+json"]')).map((script) => script.textContent ?? "").filter(Boolean));
@@ -585,9 +564,9 @@
     return cleanBookingAddress(document.querySelector('[data-testid="PropertyHeaderAddressDesktop-wrapper"]')?.textContent ?? "");
   };
   var getHotelContext = () => {
-    const metaParts = getMetaTitleParts();
     const jsonLd = getJsonLdContext();
     const h1 = cleanBookingHotelName(document.querySelector("h1")?.textContent ?? "");
+    const metaParts = getMetaTitleParts(jsonLd.propertyName || h1);
     const urlParams = new URLSearchParams(window.location.search);
     const adults = Number.parseInt(urlParams.get("group_adults") ?? "1", 10);
     return {
@@ -629,17 +608,19 @@
       links
     }));
   };
+  var isBarMounted = () => {
+    const bar = document.getElementById(BAR_ID);
+    return Boolean(bar && bar.parentElement === getHeaderAnchor());
+  };
   var main = () => {
     ensureSearchBar();
-    waitForEl("h1", 1e4).then(() => {
-      const observer = observeDomChanges(ensureSearchBar, {
-        root: document.body,
-        debounceMs: 120,
-        disconnectAfterMs: 20000,
-        runImmediately: true
-      });
-      observer.observe(document.body, { childList: true, subtree: true });
-    }).catch(() => {});
+    const observer = observeDomChanges(ensureSearchBar, {
+      root: document.body,
+      debounceMs: 0,
+      disconnectAfterMs: 60000,
+      shouldRun: () => !isBarMounted()
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
   };
   runWhenReady(main);
 })();

@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
-// @version              1.0.3
+// @version              1.0.4
 // ==/UserScript==
 
 'use strict';
@@ -891,19 +891,17 @@
       });
     });
   };
-  var detailEnhanced = false;
-  var findViewLocationRow = () => {
-    const h6s = document.querySelectorAll("h6");
-    for (const h6 of h6s) {
-      if (h6.textContent?.trim() === "View Location") {
-        return h6.closest("[class]") ?? h6.parentElement;
-      }
-    }
-    return null;
+  var VIEW_LOCATION_RE = /^view location$/i;
+  var findViewLocationRow = (nameEl) => {
+    const control = [...document.querySelectorAll('[role="button"]')].find((el) => VIEW_LOCATION_RE.test(el.textContent?.trim() ?? "") && el.getClientRects().length > 0);
+    if (!control)
+      return null;
+    let row = control;
+    while (row?.parentElement && !row.parentElement.contains(nameEl))
+      row = row.parentElement;
+    return row?.parentElement && row !== nameEl ? row : null;
   };
   var enhanceDetailPage = () => {
-    if (detailEnhanced)
-      return;
     const nameEl = document.querySelector('[data-test-id="hotel-name"]');
     if (!nameEl)
       return;
@@ -918,10 +916,9 @@
         address = t;
       }
     });
-    const viewLocRow = findViewLocationRow();
+    const viewLocRow = findViewLocationRow(nameEl);
     if (!viewLocRow)
       return;
-    detailEnhanced = true;
     injectCSS(SUPER_LINKS_STYLE_ID, SUPER_LINKS_CSS);
     const buttons = buildHotelSearchLinks({
       source: "super",
