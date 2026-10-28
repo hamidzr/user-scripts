@@ -1,6 +1,6 @@
 # Monarch Money
 
-Userscripts that add multi-select and CSV export to Monarch Money pages.
+Two userscripts for Monarch Money: shift-click to select and export many transactions at once, and export your investment holdings to CSV.
 
 ## Monarch Bulk Select
 

@@ -1,6 +1,6 @@
 # Google Userscripts
 
-This directory contains two public Google userscripts: hotel shortcuts for Google Travel and a "Feeling Lucky" redirect.
+Two userscripts for Google: Booking and Super links on Google Travel hotel pages, and a redirect that skips the results page for "Feeling Lucky" searches.
 
 ## Google Travel Links
 

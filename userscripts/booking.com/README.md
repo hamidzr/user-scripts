@@ -1,6 +1,6 @@
 # Booking.com Userscripts
 
-Two public userscripts that make Booking.com search results and hotel pages easier to compare.
+Two userscripts that make Booking.com search results and hotel pages easier to compare.
 
 ## Booking Listing Score
 

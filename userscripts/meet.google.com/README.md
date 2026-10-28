@@ -1,6 +1,6 @@
 # Google Meet Userscripts
 
-This directory contains two public userscripts for Google Meet calls, one for joining muted and one for leaving an emptied call.
+Two userscripts for Google Meet calls: one turns off your microphone and camera when you join, the other offers to leave once the call empties out.
 
 ## Google Meet - Auto Mute on Join
 

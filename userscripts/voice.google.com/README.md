@@ -1,7 +1,6 @@
 # Google Voice Latest Login Code
 
-Latest login code: shows the newest verification / login code from your Google Voice texts in a
-small floating card.
+Shows the newest login or verification code from your Google Voice texts in a small floating card, so you can copy it with one click.
 
 ## What it does
 

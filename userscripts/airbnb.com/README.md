@@ -1,9 +1,6 @@
 # Airbnb Scripts
 
-This folder contains two public Airbnb userscripts:
-
-- `Airbnb Property Plus`, loaded site-wide and route-gated to listing pages
-- `Airbnb Listing Score`, loaded site-wide and route-gated to search result pages
+Two userscripts for Airbnb. Property Plus adds quick actions, a draggable map, message templates, and nightly prices to listing pages. Listing Score ranks search results by rating confidence and value.
 
 ## Airbnb Property Plus
 

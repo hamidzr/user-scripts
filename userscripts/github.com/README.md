@@ -1,6 +1,6 @@
 # GitHub Userscripts
 
-This directory contains two public GitHub userscripts focused on pull request workflows.
+Two userscripts for GitHub pull requests. One sorts status checks so failures come first, the other shows additions and deletions next to each pull request in lists.
 
 ## GitHub Status Checks
 
