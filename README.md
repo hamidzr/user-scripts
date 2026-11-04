@@ -65,4 +65,4 @@ Each folder under [`userscripts/`](./userscripts/) has a `README.md` with detail
 
 ## Support
 
-These scripts are free. If one saves you time, you can [support us](https://latentbyte.com/support?app=userscripts) with a tip.
+These scripts are free. If one saves you time, you can [support us](https://latentbyte.com/support-us?app=userscripts&utm_source=userscripts&utm_medium=github&utm_campaign=support) with a tip.

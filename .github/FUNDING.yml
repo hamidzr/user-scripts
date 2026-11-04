@@ -1,2 +1,2 @@
-# shows the Sponsor button on GitHub; tips go through latentbyte.com/support
-custom: ["https://latentbyte.com/support?app=userscripts"]
+# shows the Sponsor button on GitHub; tips go through latentbyte.com/support-us
+custom: ["https://latentbyte.com/support-us?app=userscripts&utm_source=userscripts&utm_medium=github&utm_campaign=support"]
