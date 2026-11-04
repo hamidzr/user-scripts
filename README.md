@@ -62,3 +62,7 @@ These are the currently published scripts under [`userscripts/`](./userscripts/)
 ## Screenshots
 
 Each folder under [`userscripts/`](./userscripts/) has a `README.md` with details and a `demo/` folder with screenshots where available.
+
+## Support
+
+These scripts are free. If one saves you time, you can [support us](https://latentbyte.com/support?app=userscripts) with a tip.
