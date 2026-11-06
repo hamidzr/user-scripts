@@ -1,6 +1,6 @@
 # eBay Userscripts
 
-Small scripts for eBay: search results that are easier to scan, and a shipping label helper for sellers.
+Scripts for eBay: keep filters when you refine a search, highlight your search words, spot sponsored listings, and a shipping label helper for sellers.
 
 ## eBay Search Enhancer
 

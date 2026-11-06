@@ -1,6 +1,6 @@
 # Linear: open in desktop app
 
-This userscript sends Linear workspace URLs to the Linear desktop app through the `linear://` scheme.
+Opens Linear workspace links in the Linear desktop app instead of the browser, skipping marketing, docs, and login pages, with a per-page opt-out.
 
 ## What it does
 

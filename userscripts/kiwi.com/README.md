@@ -1,6 +1,6 @@
 # Kiwi Saved Searches
 
-This userscript adds a small saved-searches panel to Kiwi.com so you can keep and reload one-way flight searches.
+Adds a saved-searches panel to Kiwi.com so you can save, name, reload, and copy links to one-way flight searches. Searches stay in your browser.
 
 ## What it does
 

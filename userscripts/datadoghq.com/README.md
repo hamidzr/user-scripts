@@ -1,6 +1,6 @@
 # Datadog Log Title
 
-Adds the main query facets to Datadog Log Explorer tab titles so several open log tabs are easy to tell apart.
+Adds the main query facets, such as service, env, and status, to Datadog Log Explorer tab titles so several open log tabs are easy to tell apart.
 
 ## What it does
 

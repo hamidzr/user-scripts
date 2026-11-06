@@ -1,6 +1,6 @@
 # ChatGPT Shortcuts
 
-This userscript adds Ctrl+N and Ctrl+F shortcuts to ChatGPT.
+Adds two keyboard shortcuts to ChatGPT: Ctrl+N starts a new chat and Ctrl+F opens chat search, on both chatgpt.com and chat.openai.com.
 
 ## What it does
 

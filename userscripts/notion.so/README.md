@@ -1,6 +1,6 @@
 # Notion: open in desktop app
 
-This userscript sends Notion page URLs to the Notion desktop app through the `notion://` scheme.
+Opens Notion page links in the Notion desktop app instead of the browser, skipping login and marketing pages, with a per-page opt-out to stay on the web.
 
 ## What it does
 

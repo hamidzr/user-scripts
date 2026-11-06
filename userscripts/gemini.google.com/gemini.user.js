@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name                 Gemini Auto-focus
 // @author               AZ
-// @description          focus the editor, default to Pro model, and map Ctrl+N / Ctrl+F to Gemini actions
+// @description          focus the editor, default to the 4 Argon model with Medium thinking, and map Ctrl+N / Ctrl+F to Gemini actions
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
 // @grant                GM_getValue
 // @grant                GM_setValue
@@ -10,13 +10,40 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
-// @version              1.4.0
+// @version              1.6.0
 // ==/UserScript==
 
 'use strict';
 (() => {
 
   // src/lib/dom.ts
+  var waitForEl = (selector, timeoutMs = 5000) => {
+    return new Promise((resolve, reject) => {
+      const el = document.querySelector(selector);
+      if (el)
+        return resolve(el);
+      const endTime = Date.now() + timeoutMs;
+      const observer = new MutationObserver(() => {
+        const el = document.querySelector(selector);
+        if (el) {
+          observer.disconnect();
+          resolve(el);
+        } else if (Date.now() > endTime) {
+          observer.disconnect();
+          reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true });
+      setTimeout(() => {
+        observer.disconnect();
+        const el = document.querySelector(selector);
+        if (el)
+          resolve(el);
+        else
+          reject(new Error(`waitForEl("${selector}") timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+  };
   var POLL_INTERVAL = 100;
   var pollUntil = (fn, timeoutMs) => {
     const endTime = Date.now() + timeoutMs;
@@ -164,9 +191,12 @@
   var SEARCH_SEL = 'button[aria-label="Search"]';
   var MODE_BTN_SEL = 'button[data-test-id="bard-mode-menu-button"]';
   var MODEL_OPTION_SEL = '[data-test-id^="bard-mode-option-"]';
+  var THINKING_ITEM_SEL = 'gem-menu-item[value="thinking_level"]';
   var KEY_ENABLED = "autoSwitchEnabled";
   var KEY_PATTERN = "modelPattern";
-  var DEFAULT_PATTERN = "Pro";
+  var DEFAULT_PATTERN = "Argon";
+  var THINKING_LEVEL = "Medium";
+  var PICKER_TIMEOUT_MS = 180000;
   var isAutoSwitchEnabled = () => GM_getValue(KEY_ENABLED, "1") !== "0";
   var getModelPattern = () => GM_getValue(KEY_PATTERN, DEFAULT_PATTERN);
   var registerMenuCommands = () => {
@@ -176,13 +206,13 @@
         GM_setValue(KEY_ENABLED, on ? "0" : "1");
         registerMenuCommands();
         if (!on)
-          selectProModel();
+          selectModel();
       });
     };
     updateToggleLabel();
     GM_registerMenuCommand("Set model pattern (regex)...", () => {
       const current = getModelPattern();
-      const input = prompt("Model name regex (e.g. Pro, Flash, ^Gemini 2):", current);
+      const input = prompt("Model name regex (e.g. Argon, Pro, Flash):", current);
       if (input === null)
         return;
       const trimmed = input.trim();
@@ -195,7 +225,7 @@
         return;
       }
       GM_setValue(KEY_PATTERN, trimmed);
-      selectProModel();
+      selectModel();
     });
   };
   var findModelOption = (pattern) => {
@@ -206,6 +236,20 @@
     }
     return null;
   };
+  var findThinkingOption = (level) => {
+    const id = document.querySelector(THINKING_ITEM_SEL)?.getAttribute("aria-controls");
+    const submenu = id ? document.getElementById(id) : null;
+    if (!submenu)
+      return null;
+    const items = submenu.querySelectorAll('[role="menuitem"]');
+    for (const item of items) {
+      if (item.querySelector(".label")?.textContent?.trim() === level)
+        return item;
+    }
+    return null;
+  };
+  var hasThinkingLevel = (modeBtn, level) => (modeBtn.getAttribute("aria-label") ?? "").trim().endsWith(` ${level}`);
+  var isMenuOpen = (modeBtn) => modeBtn.getAttribute("aria-expanded") === "true";
   var focusEditor = () => {
     const editor = document.querySelector(EDITOR_SEL);
     if (!editor || document.activeElement === editor)
@@ -222,51 +266,75 @@
     const path = window.location.pathname;
     return path === "/app" || path === "/app/" || path === "/";
   };
-  var selectProModel = async () => {
-    if (!isNewChat())
+  var running = false;
+  var selectThinkingLevel = async (modeBtn) => {
+    await pollUntil(() => isMenuOpen(modeBtn) ? null : true, 2000);
+    modeBtn.click();
+    const option = await pollUntil(() => findThinkingOption(THINKING_LEVEL), 3000);
+    if (option.classList.contains("selected"))
+      modeBtn.click();
+    else
+      option.click();
+  };
+  var selectModel = async () => {
+    if (!isNewChat() || running)
       return;
-    if (!isAutoSwitchEnabled())
-      return;
+    running = true;
+    const autoSwitch = isAutoSwitchEnabled();
     const pattern = (() => {
       try {
         return new RegExp(getModelPattern(), "i");
       } catch {
-        return /Pro/i;
+        return /Argon/i;
       }
     })();
+    let modeBtn = null;
     try {
-      const modeBtn = await pollUntil(() => {
+      await waitForEl(MODE_BTN_SEL, PICKER_TIMEOUT_MS);
+      modeBtn = await pollUntil(() => {
         const btn = document.querySelector(MODE_BTN_SEL);
         return btn?.textContent?.trim() ? btn : null;
       }, 5000);
-      const current = modeBtn.textContent?.trim() ?? "";
-      if (pattern.test(current))
+      if (!isNewChat())
+        return;
+      const needsModel = autoSwitch && !pattern.test(modeBtn.textContent?.trim() ?? "");
+      const needsThinking = !hasThinkingLevel(modeBtn, THINKING_LEVEL);
+      if (!needsModel && !needsThinking)
         return;
       const editor = document.querySelector(EDITOR_SEL);
       const savedHTML = editor?.innerHTML ?? "";
       const hadFocus = document.activeElement === editor;
-      modeBtn.click();
-      const targetOption = await pollUntil(() => findModelOption(pattern), 3000);
-      targetOption.click();
-      if (editor && savedHTML) {
+      if (needsModel) {
+        modeBtn.click();
+        const targetOption = await pollUntil(() => findModelOption(pattern), 3000);
+        targetOption.click();
+      }
+      if (needsThinking)
+        await selectThinkingLevel(modeBtn);
+      if (editor && (savedHTML || hadFocus)) {
         requestAnimationFrame(() => {
-          if (!editor.textContent?.trim()) {
+          if (savedHTML && !editor.textContent?.trim()) {
             editor.innerHTML = savedHTML;
           }
           if (hadFocus)
             focusEnd(editor);
         });
       }
-    } catch {}
+    } catch {
+      if (modeBtn && isMenuOpen(modeBtn))
+        modeBtn.click();
+    } finally {
+      running = false;
+    }
   };
   registerMenuCommands();
   window.addEventListener("focus", focusEditor);
   bindCtrlNToClick(getNewChatLink);
   bindShortcutToClick(getSearchButton, { key: "f", ctrlKey: true });
-  watchLocationChange(() => selectProModel(), { debounceMs: 300 });
+  watchLocationChange(() => selectModel(), { debounceMs: 300 });
   var main = () => {
     focusEditor();
-    selectProModel();
+    selectModel();
   };
   main();
 })();

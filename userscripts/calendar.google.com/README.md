@@ -1,6 +1,6 @@
 # Zoom link upgrader
 
-This userscript rewrites Zoom meeting links in Google Calendar so they open the Zoom app directly.
+Rewrites Zoom meeting links in Google Calendar so clicking one opens the Zoom desktop app directly instead of a browser tab that then launches Zoom.
 
 ## What it does
 

@@ -1,6 +1,6 @@
 # Backblaze B2 Multiselect
 
-This userscript adds range selection, modifier-click toggling, and size sorting to the Backblaze B2 file browser.
+Adds Shift+click range selection, modifier-click toggling, and largest-first size sorting to the Backblaze B2 file browser, so bulk actions take fewer clicks.
 
 ## What it does
 

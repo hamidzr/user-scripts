@@ -15,30 +15,24 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/aliexpress.com/aliexpress-score.user.js
-// @version              1.2.0
+// @version              1.3.0
 // ==/UserScript==
 
 'use strict';
 (() => {
 
   // src/lib/scoring.ts
-  var A = 20;
-  var B = 5;
-  var Z = 1.28;
   var clip = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
-  var starsToP = (stars) => clip((stars - 3) / 2, 0, 1);
-  var wilsonLB = (stars, reviewCount) => {
-    if (!stars || !reviewCount)
+  var boundedMeanLB = (mean, reviewCount, lo, hi, z = 1.645) => {
+    if (!mean || !reviewCount)
       return 0;
-    const p = starsToP(stars);
-    const v = reviewCount;
-    const n = v + A + B;
-    const pHat = (p * v + A) / n;
-    const z2 = Z * Z;
-    const numerator = pHat + z2 / (2 * n) - Z * Math.sqrt((pHat * (1 - pHat) + z2 / (4 * n)) / n);
-    const denominator = 1 + z2 / n;
-    return numerator / denominator;
+    const p = clip((mean - lo) / (hi - lo), 0, 1);
+    const n = reviewCount;
+    const z2 = z * z;
+    const numerator = p + z2 / (2 * n) - z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n);
+    return numerator / (1 + z2 / n);
   };
+  var starMeanLB = (stars, reviewCount, z = 1.645) => boundedMeanLB(stars, reviewCount, 1, 5, z);
   var avgRanks = (values) => {
     const N = values.length;
     if (N <= 1)
@@ -79,7 +73,7 @@
   var scoreReviewEntries = (entries) => {
     return scoreLowerBoundEntries(entries.map((entry) => ({
       ...entry,
-      lb: wilsonLB(entry.stars, entry.reviewCount)
+      lb: starMeanLB(entry.stars, entry.reviewCount)
     })));
   };
   var getColorForScore = (score, maxChannel = 255) => {
@@ -764,10 +758,11 @@
     const color = getColorForScore(d.rel);
     const pill = document.createElement("div");
     pill.className = "ae-score-pill";
-    pill.textContent = d.finalStars.toFixed(1) + "★";
+    const lbStars = scoreToStars(d.lb);
+    pill.textContent = lbStars.toFixed(1) + "★";
     pill.style.background = color;
     d.item.appendChild(pill);
-    d.item.title = `${d.stars}★ | ${d.reviewCount} ${d.volumeLabel} | ` + `LB: ${d.lb.toFixed(3)} | Rel: ${d.rel.toFixed(3)} | ` + `Final: ${d.final.toFixed(3)} (${d.finalStars.toFixed(1)}★)`;
+    d.item.title = `${d.stars}★ | ${d.reviewCount} ${d.volumeLabel} | ` + `95% lower bound: ${lbStars.toFixed(2)}★ | page rank: ${d.rel.toFixed(3)}`;
     d.item.dataset.aeFinal = d.final.toFixed(6);
   };
   var processResults = (opts) => {

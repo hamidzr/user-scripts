@@ -4,7 +4,7 @@ Scores AliExpress search results by star rating and order volume together, and a
 
 ## What it does
 
-- adds a score pill (stars) in the corner of each result card, colored from weak to strong
+- adds a score pill in the corner of each result card showing a 95% lower bound on the star rating given its sold count, colored from weak to strong
 - fades lower-scoring cards so the best listings stand out
 - hover a card to see its details: stars, sold or order count, and the score breakdown
 - adds an "AE score" bar above the results with:

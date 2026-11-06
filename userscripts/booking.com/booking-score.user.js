@@ -1,14 +1,14 @@
 // ==UserScript==
 // @name                 Booking Listing Score
 // @author               AZ
-// @description          Wilson lower-bound page-relative scoring for Booking.com list cards and map pins
+// @description          conservative review-count-aware scores for Booking.com list cards and map pins
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-score.user.js
 // @grant                none
 // @match                https://www.booking.com/searchresults.html*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-body
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-score.user.js
-// @version              0.1.0
+// @version              0.2.0
 // ==/UserScript==
 
 'use strict';
@@ -210,22 +210,15 @@
   };
 
   // src/lib/scoring.ts
-  var A = 20;
-  var B = 5;
-  var Z = 1.28;
   var clip = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
-  var starsToP = (stars) => clip((stars - 3) / 2, 0, 1);
-  var wilsonLB = (stars, reviewCount) => {
-    if (!stars || !reviewCount)
+  var boundedMeanLB = (mean, reviewCount, lo, hi, z = 1.645) => {
+    if (!mean || !reviewCount)
       return 0;
-    const p = starsToP(stars);
-    const v = reviewCount;
-    const n = v + A + B;
-    const pHat = (p * v + A) / n;
-    const z2 = Z * Z;
-    const numerator = pHat + z2 / (2 * n) - Z * Math.sqrt((pHat * (1 - pHat) + z2 / (4 * n)) / n);
-    const denominator = 1 + z2 / n;
-    return numerator / denominator;
+    const p = clip((mean - lo) / (hi - lo), 0, 1);
+    const n = reviewCount;
+    const z2 = z * z;
+    const numerator = p + z2 / (2 * n) - z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n);
+    return numerator / (1 + z2 / n);
   };
   var avgRanks = (values) => {
     const N = values.length;
@@ -264,12 +257,6 @@
       };
     });
   };
-  var scoreReviewEntries = (entries) => {
-    return scoreLowerBoundEntries(entries.map((entry) => ({
-      ...entry,
-      lb: wilsonLB(entry.stars, entry.reviewCount)
-    })));
-  };
   var getColorForScore = (score, maxChannel = 255) => {
     const max = Math.max(0, maxChannel);
     let r, g;
@@ -289,6 +276,9 @@
     const multiplier = /m/i.test(trimmed) ? 1e6 : /k/i.test(trimmed) ? 1000 : 1;
     return Math.round(parseFloat(trimmed.replace(/[,kKmM]/g, "")) * multiplier);
   };
+
+  // src/lib/text.ts
+  var normalizeWhitespace = (value) => (value ?? "").replace(/\s+/g, " ").trim();
 
   // src/booking.com/booking-score.user.ts
   var STYLE_ID = "booking-score-style";
@@ -346,16 +336,13 @@
     white-space: nowrap;
   }
 `;
-  var normalizeText = (value) => {
-    return (value ?? "").replace(/\s+/g, " ").trim();
-  };
   var parseMoney = (value) => {
     const parsed = Number.parseFloat(value.replace(/[$,]/g, ""));
     return Number.isFinite(parsed) ? parsed : null;
   };
   var getCardTitle = (card) => {
     const titleEl = card.querySelector('[data-testid="title"], [data-testid="header-title"]');
-    return normalizeText(titleEl?.textContent).replace(/\s*Opens in new window\s*/gi, "").trim();
+    return normalizeWhitespace(titleEl?.textContent).replace(/\s*Opens in new window\s*/gi, "").trim();
   };
   var getCardKey = (card, title, priceTotal) => {
     const href = card.querySelector('a[href*="/hotel/"]')?.href;
@@ -368,8 +355,8 @@
     return `${title.toLowerCase()}|${priceTotal ?? ""}`;
   };
   var extractRatingData = (card) => {
-    const reviewText = normalizeText(card.querySelector('[data-testid="review-score"]')?.textContent);
-    const text = normalizeText(`${reviewText} ${card.innerText}`);
+    const reviewText = normalizeWhitespace(card.querySelector('[data-testid="review-score"]')?.textContent);
+    const text = normalizeWhitespace(`${reviewText} ${card.innerText}`);
     const scoredMatch = text.match(/Scored\s+(\d+(?:\.\d+)?).*?(\d[\d,]*)\s+reviews?/i);
     const reviewMatch = scoredMatch ?? text.match(/(\d+(?:\.\d+)?)\s+(?:Wonderful|Very Good|Good|Excellent|Pleasant|Review score).*?(\d[\d,]*)\s+reviews?/i);
     if (!reviewMatch)
@@ -380,7 +367,7 @@
     };
   };
   var parseNights = (card) => {
-    const nightsText = normalizeText(card.querySelector('[data-testid="price-for-x-nights"]')?.textContent);
+    const nightsText = normalizeWhitespace(card.querySelector('[data-testid="price-for-x-nights"]')?.textContent);
     const match = nightsText.match(/(\d+)\s+nights?/i) ?? card.innerText.match(/(\d+)\s+nights?/i);
     if (!match)
       return null;
@@ -389,11 +376,11 @@
   };
   var parsePriceTotal = (card) => {
     const priceArea = card.querySelector('[data-testid="availability-rate-wrapper"]') ?? card.querySelector('[data-testid="availability-container"]') ?? card;
-    const text = normalizeText(priceArea.innerText || priceArea.textContent);
+    const text = normalizeWhitespace(priceArea.innerText || priceArea.textContent);
     const explicitMatch = text.match(/Current price\s*\$\s*([\d,]+(?:\.\d{1,2})?)/i) ?? text.match(/\bPrice\s*\$\s*([\d,]+(?:\.\d{1,2})?)/i);
     if (explicitMatch)
       return parseMoney(explicitMatch[1]);
-    const perNightText = normalizeText(card.querySelector('[data-testid="price-and-discounted-price"]')?.textContent);
+    const perNightText = normalizeWhitespace(card.querySelector('[data-testid="price-and-discounted-price"]')?.textContent);
     const perNightMatch = perNightText.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
     const nights = parseNights(card);
     if (perNightMatch && nights) {
@@ -426,11 +413,12 @@
       if (!deduped.has(entry.key))
         deduped.set(entry.key, entry);
     });
-    return scoreReviewEntries(Array.from(deduped.values()).map((entry) => ({
+    return scoreLowerBoundEntries(Array.from(deduped.values()).map((entry) => ({
       ...entry,
-      stars: entry.rating / 2
+      lb: boundedMeanLB(entry.rating, entry.reviewCount, 1, 10)
     })));
   };
+  var toRating = (lb) => (1 + 9 * lb).toFixed(1);
   var getBadgeAnchor = (card) => {
     return card.querySelector('[data-testid="title"], [data-testid="header-title"]');
   };
@@ -445,13 +433,13 @@
       anchor.insertAdjacentElement("afterend", pill);
     }
     pill.style.background = getColorForScore(score.rel);
-    pill.textContent = `Score ${score.finalStars.toFixed(1)}★`;
-    pill.title = `${score.rating.toFixed(1)} Booking rating | ${score.reviewCount.toLocaleString()} reviews | ` + `LB: ${score.lb.toFixed(3)} | Rel: ${score.rel.toFixed(3)} | ` + `Final: ${score.final.toFixed(3)} (${score.finalStars.toFixed(1)}★)`;
-    card.dataset.bkScore = score.final.toFixed(6);
+    pill.textContent = `Score ${toRating(score.lb)}`;
+    pill.title = `${score.rating.toFixed(1)} Booking rating | ${score.reviewCount.toLocaleString()} reviews | ` + `95% lower bound: ${toRating(score.lb)} | page rank: ${score.rel.toFixed(3)}`;
+    card.dataset.bkScore = score.lb.toFixed(6);
     card.dataset.bkScoreRel = score.rel.toFixed(6);
   };
   var getMarkerPrice = (marker) => {
-    const raw = normalizeText(marker.querySelector("span")?.textContent ?? marker.textContent);
+    const raw = normalizeWhitespace(marker.querySelector("span")?.textContent ?? marker.textContent);
     const match = raw.match(/\$\s*([\d,]+(?:\.\d{1,2})?)/);
     return match ? parseMoney(match[1]) : null;
   };
@@ -463,11 +451,11 @@
       const priceKey = Math.round(score.priceTotal);
       const existing = pinScores.get(priceKey);
       if (!existing) {
-        pinScores.set(priceKey, { final: score.final, rel: score.rel, count: 1 });
+        pinScores.set(priceKey, { lb: score.lb, rel: score.rel, count: 1 });
         return;
       }
       const nextCount = existing.count + 1;
-      existing.final = (existing.final * existing.count + score.final) / nextCount;
+      existing.lb = (existing.lb * existing.count + score.lb) / nextCount;
       existing.rel = (existing.rel * existing.count + score.rel) / nextCount;
       existing.count = nextCount;
     });
@@ -487,7 +475,7 @@
       const pill = existing ?? document.createElement("span");
       pill.className = "bk-score-pin-pill";
       pill.style.background = getColorForScore(score.rel);
-      pill.textContent = `${scoreToStars(score.final).toFixed(1)}★`;
+      pill.textContent = toRating(score.lb);
       pill.title = `Booking score ${pill.textContent}`;
       if (!existing)
         marker.appendChild(pill);

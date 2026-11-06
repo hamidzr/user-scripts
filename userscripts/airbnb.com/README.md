@@ -1,6 +1,6 @@
 # Airbnb Scripts
 
-Two userscripts for Airbnb. Property Plus adds quick actions, a draggable map, message templates, and nightly prices to listing pages. Listing Score ranks search results by rating confidence and value.
+Two userscripts for Airbnb: Property Plus adds quick actions, a draggable map, and nightly prices to listings, and Listing Score ranks search results.
 
 ## Airbnb Property Plus
 
@@ -41,9 +41,9 @@ Adds ranking, value scoring, and sorting controls on Airbnb search result grids.
 ### Features
 
 - computes a score per listing from:
-  - Wilson lower-bound confidence on rating and review count
+  - a 95% lower bound on the rating given its review count, so listings with few reviews score low until they have enough to back up their stars
   - a page-relative rank blend
-- adds color-coded score pills on listing cards
+- adds color-coded score pills on listing cards showing that lower bound in stars
 - dims weaker cards and colors rating and review-count text by relative strength
 - derives nightly rates from Airbnb price text and shows them inline on cards
 - adds a sort bar with toggles for:

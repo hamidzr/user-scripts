@@ -8,7 +8,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
-// @version              1.12.6
+// @version              1.13.0
 // ==/UserScript==
 
 'use strict';
@@ -229,15 +229,17 @@
     };
   };
 
+  // src/lib/poll.ts
+  var sleep = (ms) => new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+
   // src/airbnb.com/airbnb-search-resolver.ts
   var LOCATION_BUTTON_SELECTOR = '[data-testid="little-search-location"]';
   var LOCATION_INPUT_SELECTOR = 'input[name="query"][data-testid="structured-search-input-field-query"]';
   var LOCATION_OPTION_SELECTOR = '[role="option"][data-testid^="option-"]';
   var SEARCH_BUTTON_SELECTOR = '[data-testid="structured-search-input-search-button"]';
   var ATTEMPT_PREFIX = "ab-score-direct-search-resolve:";
-  var sleep = (ms) => new Promise((resolve) => {
-    window.setTimeout(resolve, ms);
-  });
   var normalizeQueryValue = (value) => value?.trim() ?? "";
   var hasStructuredLocationParams = (url) => {
     return ["search_type", "location_bb", "acp_id"].some((key) => normalizeQueryValue(url.searchParams.get(key)));
@@ -1000,23 +1002,17 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
 `;
 
   // src/lib/scoring.ts
-  var A = 20;
-  var B = 5;
-  var Z = 1.28;
   var clip = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
-  var starsToP = (stars) => clip((stars - 3) / 2, 0, 1);
-  var wilsonLB = (stars, reviewCount) => {
-    if (!stars || !reviewCount)
+  var boundedMeanLB = (mean, reviewCount, lo, hi, z = 1.645) => {
+    if (!mean || !reviewCount)
       return 0;
-    const p = starsToP(stars);
-    const v = reviewCount;
-    const n = v + A + B;
-    const pHat = (p * v + A) / n;
-    const z2 = Z * Z;
-    const numerator = pHat + z2 / (2 * n) - Z * Math.sqrt((pHat * (1 - pHat) + z2 / (4 * n)) / n);
-    const denominator = 1 + z2 / n;
-    return numerator / denominator;
+    const p = clip((mean - lo) / (hi - lo), 0, 1);
+    const n = reviewCount;
+    const z2 = z * z;
+    const numerator = p + z2 / (2 * n) - z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n);
+    return numerator / (1 + z2 / n);
   };
+  var starMeanLB = (stars, reviewCount, z = 1.645) => boundedMeanLB(stars, reviewCount, 1, 5, z);
   var avgRanks = (values) => {
     const N = values.length;
     if (N <= 1)
@@ -1310,7 +1306,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     for (const heading of document.querySelectorAll("h1, h2, h3")) {
       const pos = heading.compareDocumentPosition(card);
       if (pos & Node.DOCUMENT_POSITION_FOLLOWING) {
-        headingText = (heading.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+        headingText = normalizeWhitespace(heading.textContent).toLowerCase();
         continue;
       }
       if (pos & Node.DOCUMENT_POSITION_PRECEDING)
@@ -1598,13 +1594,13 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
         idxEl.style.display = "none";
     });
   }
-  function buildPillRow(rel, finalStars) {
+  function buildPillRow(rel, stars) {
     const pillRow = document.createElement("div");
     pillRow.className = "ab-pill-row";
     const scorePill = document.createElement("div");
     scorePill.className = "ab-score-pill";
     scorePill.style.background = getColorForScore(rel);
-    scorePill.textContent = `${finalStars.toFixed(1)}★`;
+    scorePill.textContent = `${stars.toFixed(1)}★`;
     pillRow.appendChild(scorePill);
     const idxEl = document.createElement("div");
     idxEl.className = "ab-photo-idx";
@@ -1645,13 +1641,13 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     const nightOnlyEls = candidates.filter((el) => {
       if (!isVisible(el))
         return false;
-      const txt = (el.textContent || "").replace(/\s+/g, " ").trim();
+      const txt = normalizeWhitespace(el.textContent);
       return /^for\s+(\d+)\s+nights?$/i.test(txt);
     });
     const nightAnyEls = candidates.filter((el) => {
       if (!isVisible(el))
         return false;
-      const txt = (el.textContent || "").replace(/\s+/g, " ").trim();
+      const txt = normalizeWhitespace(el.textContent);
       return /for\s+\d+\s+nights?/i.test(txt);
     });
     for (const nightsEl of nightOnlyEls) {
@@ -1663,7 +1659,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
         continue;
       let scan = nightsEl;
       while (scan && scan !== card) {
-        const txt = (scan.textContent || "").replace(/\s+/g, " ").trim();
+        const txt = normalizeWhitespace(scan.textContent);
         const dollars = parseDollars(txt);
         if (dollars.length) {
           target = nightsEl;
@@ -1679,7 +1675,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       const fallback = parsePriceNights((card.textContent || "").replace(/\s+/g, " "));
       if (!fallback)
         return;
-      target = nightOnlyEls[0] || nightAnyEls.slice().sort((a, b) => (a.textContent || "").replace(/\s+/g, " ").trim().length - (b.textContent || "").replace(/\s+/g, " ").trim().length)[0] || null;
+      target = nightOnlyEls[0] || nightAnyEls.slice().sort((a, b) => normalizeWhitespace(a.textContent).length - normalizeWhitespace(b.textContent).length)[0] || null;
       parsed = fallback;
     }
     if (!target)
@@ -1689,7 +1685,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       Array.from(priceContainer.querySelectorAll("span, div")).forEach((el) => {
         if (el.classList?.contains("ab-nightly-rate"))
           return;
-        const txt = (el.textContent || "").replace(/\s+/g, " ").trim();
+        const txt = normalizeWhitespace(el.textContent);
         if (!/\$\s*\d/.test(txt))
           return;
         el.style.fontWeight = "400";
@@ -1791,7 +1787,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       item.stars = rating.stars;
       item.reviewCount = rating.reviewCount;
       item.ratingLabel = `${rating.stars.toFixed(2)} (${rating.reviewCount})`;
-      item.lb = wilsonLB(rating.stars, rating.reviewCount);
+      item.lb = starMeanLB(rating.stars, rating.reviewCount);
     };
     await Promise.all(Array.from({ length: Math.min(concurrency, missing.length) }, async () => {
       while (next < missing.length) {
@@ -1809,7 +1805,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     let section = heading.parentElement;
     let best = null;
     while (section && section !== doc.body) {
-      const headingTexts = Array.from(section.querySelectorAll("h1, h2, h3")).map((el) => (el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase()).filter(Boolean);
+      const headingTexts = getHeadingTexts(section);
       const hasSimilar = headingTexts.some((text) => text.includes("available for similar dates"));
       const hasMoreStays = headingTexts.some((text) => text.includes("more stays available for your dates"));
       const cardCount = section.querySelectorAll('[data-testid="card-container"]').length;
@@ -1878,7 +1874,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     const nightlyLabel = nightly ? `$${formatUsd(nightly)}/n` : "";
     const stars = rating?.stars ?? 0;
     const reviewCount = rating?.reviewCount ?? 0;
-    const lb = hasRating ? wilsonLB(stars, reviewCount) : 0;
+    const lb = hasRating ? starMeanLB(stars, reviewCount) : 0;
     const priceDisplayLabel = priceAccLabel || (priceLabel && qualifier ? `${priceLabel} ${qualifier}` : priceLabel);
     return {
       key,
@@ -1902,7 +1898,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       lb,
       rel: 0,
       final: 0,
-      finalStars: 0,
+      lbStars: 0,
       starsRel: 0,
       reviewRel: 0,
       priceRel: 0.5,
@@ -2042,7 +2038,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       const final = 0.75 * d.lb + 0.25 * rel;
       d.rel = rel;
       d.final = final;
-      d.finalStars = 1 + 4 * final;
+      d.lbStars = scoreToStars(d.lb);
     });
     const starsRanks = avgRanks(ratedListings.map((d) => d.stars));
     const reviewRanks = avgRanks(ratedListings.map((d) => d.reviewCount));
@@ -2372,7 +2368,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       return (1 + 4 * item.valueScore).toFixed(1);
     if (labelMode === "price")
       return item.nightly ? `$${formatUsd(item.nightly)}` : "$-";
-    return item.finalStars.toFixed(1);
+    return item.lbStars.toFixed(1);
   };
   var buildAggMapView = (listings) => {
     const items = getMappableListings(listings);
@@ -2638,7 +2634,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       fc.textContent = "Free cancellation";
       photo.appendChild(fc);
     }
-    const { pillRow, scorePill } = buildPillRow(item.rel, item.finalStars);
+    const { pillRow, scorePill } = buildPillRow(item.rel, item.lbStars);
     if (item.hasRating) {
       upsertValuePill(pillRow, item.valueRel, item.valueScore);
     } else {
@@ -2961,7 +2957,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     p1Ratings.forEach((r) => allRatings.push({
       stars: r.stars,
       reviewCount: r.reviewCount,
-      lb: wilsonLB(r.stars, r.reviewCount)
+      lb: starMeanLB(r.stars, r.reviewCount)
     }));
     const remainingCursors = pageCursors ? pageCursors.slice(1) : [];
     for (let i = 0;i < remainingCursors.length; i++) {
@@ -2971,7 +2967,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       ratings.forEach((r) => allRatings.push({
         stars: r.stars,
         reviewCount: r.reviewCount,
-        lb: wilsonLB(r.stars, r.reviewCount)
+        lb: starMeanLB(r.stars, r.reviewCount)
       }));
     }
     const globalRatings = scoreLowerBoundEntries(allRatings);
@@ -2998,18 +2994,18 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       const rank = countSame > 0 ? countBelow + (countSame - 1) / 2 : countBelow;
       const rel = N <= 1 ? 0.5 : rank / (N - 1);
       const finalScore = computeReviewFinalScore(cardLb, rel);
-      const finalStars = scoreToStars(finalScore);
+      const lbStars = scoreToStars(cardLb);
       const infoSection = getInfoSection(card);
       if (infoSection)
         infoSection.style.opacity = (0.35 + 0.65 * rel).toFixed(2);
       const pill = card.querySelector(".ab-score-pill:not(.ab-value-pill)");
       if (pill) {
         pill.style.background = getColorForScore(rel);
-        pill.textContent = finalStars.toFixed(1) + "★";
+        pill.textContent = lbStars.toFixed(1) + "★";
       }
       card.dataset.abScore = finalScore.toFixed(6);
       upsertNightlyRate(card);
-      card.title = `${card.dataset.abStars}★ | ${card.dataset.abCount} reviews | ` + `LB: ${cardLb.toFixed(3)} | Rel(global): ${rel.toFixed(3)} | ` + `Final: ${finalScore.toFixed(3)} (${finalStars.toFixed(1)}★)`;
+      card.title = `${card.dataset.abStars}★ | ${card.dataset.abCount} reviews | ` + `95% lower bound: ${lbStars.toFixed(2)}★ | page rank (global): ${rel.toFixed(3)}`;
     });
     applyValueScoring(domCards);
     applySort();
@@ -3037,7 +3033,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       if (card.offsetParent === null || window.getComputedStyle(card).display === "none")
         return;
       const { stars, reviewCount } = extractRatingData(card);
-      const lb = wilsonLB(stars, reviewCount);
+      const lb = starMeanLB(stars, reviewCount);
       itemData.push({ card, stars, reviewCount, lb });
     });
     if (!itemData.length)
@@ -3067,7 +3063,7 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       const pill = d.card.querySelector(".ab-score-pill:not(.ab-value-pill)");
       if (pill) {
         pill.style.background = getColorForScore(d.rel);
-        pill.textContent = d.finalStars.toFixed(1) + "★";
+        pill.textContent = scoreToStars(d.lb).toFixed(1) + "★";
       }
       d.card.dataset.abScore = d.final.toFixed(6);
       colorRatingDisplay(d.card, d.starsRel, d.reviewRel);
@@ -3084,13 +3080,13 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
       const photoSection = getPhotoSection(d.card);
       if (photoSection) {
         photoSection.style.position = "relative";
-        const { pillRow } = buildPillRow(d.rel, d.finalStars);
+        const { pillRow } = buildPillRow(d.rel, scoreToStars(d.lb));
         photoSection.appendChild(pillRow);
         attachHoverCycle(photoSection);
       }
       colorRatingDisplay(d.card, d.starsRel, d.reviewRel);
       upsertNightlyRate(d.card);
-      d.card.title = `${d.stars}★ | ${d.reviewCount} reviews | ` + `LB: ${d.lb.toFixed(3)} | Rel: ${d.rel.toFixed(3)} | ` + `Final: ${d.final.toFixed(3)} (${d.finalStars.toFixed(1)}★)`;
+      d.card.title = `${d.stars}★ | ${d.reviewCount} reviews | ` + `95% lower bound: ${scoreToStars(d.lb).toFixed(2)}★ | page rank: ${d.rel.toFixed(3)}`;
       d.card.dataset.abScore = d.final.toFixed(6);
       d.card.dataset.abStars = d.stars.toString();
       d.card.dataset.abCount = d.reviewCount.toString();

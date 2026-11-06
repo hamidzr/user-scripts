@@ -1,6 +1,6 @@
 # Super.com Enhancer
 
-Makes Super.com hotel search easier to read by showing total prices instead of nightly rates.
+Makes Super.com hotel search easier to read by showing total stay prices instead of nightly rates, and adds Google, Maps, and Booking search buttons.
 
 ## What it does
 

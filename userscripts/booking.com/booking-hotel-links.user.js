@@ -482,9 +482,6 @@
   };
 
   // src/booking.com/booking-hotel-links.helpers.ts
-  var cleanText = (value) => {
-    return value.replace(/\s+/g, " ").trim();
-  };
   var stripTrailingParens = (value) => {
     let next = value;
     while (/\s+\([^)]*\)$/i.test(next)) {
@@ -493,12 +490,12 @@
     return next;
   };
   var cleanBookingHotelName = (value) => {
-    return stripTrailingParens(cleanText(value).replace(/\s+Deals$/i, "").trim());
+    return stripTrailingParens(normalizeWhitespace(value).replace(/\s+Deals$/i, "").trim());
   };
   var getBookingMetaTitleParts = (value, knownName = "") => {
-    const text = stripTrailingParens(cleanText(value));
-    const name = cleanText(knownName);
-    const split = (part) => part.split(",").map((item) => cleanText(item));
+    const text = stripTrailingParens(normalizeWhitespace(value));
+    const name = normalizeWhitespace(knownName);
+    const split = (part) => part.split(",").map((item) => normalizeWhitespace(item));
     const parts = name && text.startsWith(`${name},`) ? [name, ...split(text.slice(name.length + 1))] : split(text);
     return {
       propertyName: parts[0] ?? "",
@@ -507,7 +504,7 @@
     };
   };
   var cleanBookingAddress = (value) => {
-    return cleanText(value).replace(/(Excellent location|Real guests|show map).*$/i, "").replace(/After booking.*$/i, "").replace(/[–-]\s*$/u, "").trim();
+    return normalizeWhitespace(value).replace(/(Excellent location|Real guests|show map).*$/i, "").replace(/After booking.*$/i, "").replace(/[–-]\s*$/u, "").trim();
   };
   var hasHotelType = (value) => {
     if (Array.isArray(value)) {
@@ -540,8 +537,8 @@
     return {
       propertyName: cleanBookingHotelName(String(hotel.name ?? "")),
       address: cleanBookingAddress(String(address?.streetAddress ?? "")),
-      city: cleanText(String(address?.addressLocality ?? "")),
-      country: cleanText(String(address?.addressCountry ?? ""))
+      city: normalizeWhitespace(String(address?.addressLocality ?? "")),
+      country: normalizeWhitespace(String(address?.addressCountry ?? ""))
     };
   };
 

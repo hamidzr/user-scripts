@@ -1,6 +1,6 @@
 # Grocery Food Facts
 
-Shows Open Food Facts scores, allergens, additives, and nutrition right on Walmart and H-E-B product pages, and compares Walmart products side by side per 100 g, so you can pick the better food even when serving sizes differ.
+Shows Open Food Facts scores, allergens, additives, and nutrition on Walmart and H-E-B product pages, and compares Walmart products side by side per 100 g.
 
 ## What it does
 

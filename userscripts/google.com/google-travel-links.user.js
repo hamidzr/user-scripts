@@ -559,7 +559,6 @@
   };
 
   // src/google.com/google-travel-links.helpers.ts
-  var cleanPart2 = (value) => value.replace(/\s+/g, " ").trim();
   var looksLikeAdminArea = (value) => {
     return /\b(province|state|region|county|district|prefecture|department|territory|parish|oblast|voivodeship)\b/i.test(value) || /^[A-Z]{2,3}$/.test(value.trim());
   };
@@ -593,13 +592,13 @@
     return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   };
   var cleanGoogleTravelHotelName = (value) => {
-    return cleanPart2(value).replace(/\s+-\s+Google hotels?$/i, "").replace(/\s+-\s+Google Travel$/i, "");
+    return normalizeWhitespace(value).replace(/\s+-\s+Google hotels?$/i, "").replace(/\s+-\s+Google Travel$/i, "");
   };
   var cleanGoogleTravelAddress = (value) => {
-    return cleanPart2(value).replace(/\s*[•·]\s*/g, " • ").replace(/\s*(?:[•·]\s*)?\+\d[\d\s()-]{5,}.*$/u, "").trim();
+    return normalizeWhitespace(value).replace(/\s*[•·]\s*/g, " • ").replace(/\s*(?:[•·]\s*)?\+\d[\d\s()-]{5,}.*$/u, "").trim();
   };
   var parseGoogleTravelLocation = (address) => {
-    const parts = cleanGoogleTravelAddress(address).split(",").map((part) => cleanPart2(part)).filter(Boolean);
+    const parts = cleanGoogleTravelAddress(address).split(",").map((part) => normalizeWhitespace(part)).filter(Boolean);
     if (!parts.length) {
       return { city: "" };
     }
@@ -612,7 +611,7 @@
     };
   };
   var parseGoogleTravelDateLabel = (value, now = new Date) => {
-    const match = /^(?:[A-Za-z]{3,9},\s+)?(?<month>[A-Za-z]{3,9})\s+(?<day>\d{1,2})$/u.exec(cleanPart2(value));
+    const match = /^(?:[A-Za-z]{3,9},\s+)?(?<month>[A-Za-z]{3,9})\s+(?<day>\d{1,2})$/u.exec(normalizeWhitespace(value));
     if (!match?.groups)
       return;
     const month = MONTH_MAP[match.groups.month.toLowerCase()];
@@ -635,7 +634,7 @@
     return toIsoDate(resolved.year, month, day);
   };
   var parseGoogleTravelGuestCount = (value) => {
-    const parsed = Number.parseInt(cleanPart2(value), 10);
+    const parsed = Number.parseInt(normalizeWhitespace(value), 10);
     return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
   };
 
