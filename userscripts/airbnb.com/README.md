@@ -79,3 +79,7 @@ Aggregated combined view:
 
 - both scripts depend on Airbnb DOM structure and internal data payloads that can change without notice
 - some controls rely on Airbnb experiments, locale-specific labels, or data that may not be present on every page
+
+## Related
+
+Planning a multi-stop trip? [Roamline](https://roamline.lbyte.app) compares routes and plans dates with the people you travel with.

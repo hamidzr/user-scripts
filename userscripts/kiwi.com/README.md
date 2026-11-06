@@ -19,3 +19,7 @@ Saved searches live in this browser profile's `localStorage` on kiwi.com under `
 
 - one-way searches only
 - no sync between browsers or profiles
+
+## Related
+
+Planning a multi-stop trip? [Roamline](https://roamline.lbyte.app) compares routes and plans dates with the people you travel with.

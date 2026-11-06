@@ -33,3 +33,7 @@ Runs on `booking.com/hotel/*`.
 - scores are relative to the results currently loaded on the page
 - map pin scores are matched by price, so pins sharing a price show an averaged score
 - price parsing expects dollar amounts
+
+## Related
+
+Planning a multi-stop trip? [Roamline](https://roamline.lbyte.app) compares routes and plans dates with the people you travel with.
