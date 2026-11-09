@@ -10,7 +10,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
-// @version              1.6.0
+// @version              1.6.1
 // ==/UserScript==
 
 'use strict';
@@ -241,7 +241,7 @@
     const submenu = id ? document.getElementById(id) : null;
     if (!submenu)
       return null;
-    const items = submenu.querySelectorAll('[role="menuitem"]');
+    const items = submenu.querySelectorAll("gem-menu-item");
     for (const item of items) {
       if (item.querySelector(".label")?.textContent?.trim() === level)
         return item;
