@@ -4,11 +4,12 @@
 // @description          conservative review-count-aware scores for Booking.com list cards and map pins
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-score.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.booking.com/searchresults.html*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-body
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-score.user.js
-// @version              0.2.0
+// @version              0.2.1
 // ==/UserScript==
 
 'use strict';

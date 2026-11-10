@@ -4,6 +4,7 @@
 // @description          preserve filters on search, add reset button, highlight keywords including negative keywords in red
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-search.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.ebay.com/*
 // @match                https://www.ebay.com.au/*
 // @match                https://www.ebay.co.uk/*
@@ -11,7 +12,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-end
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-search.user.js
-// @version              1.3.2
+// @version              1.3.3
 // ==/UserScript==
 
 'use strict';

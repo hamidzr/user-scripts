@@ -4,11 +4,12 @@
 // @description          adds external hotel search links on Booking.com property pages
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-hotel-links.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.booking.com/hotel/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-hotel-links.user.js
-// @version              0.1.3
+// @version              0.1.4
 // ==/UserScript==
 
 'use strict';

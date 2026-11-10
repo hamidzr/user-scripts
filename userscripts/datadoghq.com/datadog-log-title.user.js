@@ -4,6 +4,7 @@
 // @description          extend Datadog Log Explorer tab titles with key query facets so many open tabs stay distinguishable
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/datadoghq.com/datadog-log-title.user.js
 // @grant                none
+// @license              MIT
 // @match                https://app.datadoghq.com/logs*
 // @match                https://app.datadoghq.eu/logs*
 // @match                https://app.us3.datadoghq.com/logs*
@@ -12,7 +13,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/datadoghq.com/datadog-log-title.user.js
-// @version              0.2.0
+// @version              0.2.1
 // ==/UserScript==
 
 'use strict';

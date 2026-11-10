@@ -4,12 +4,13 @@
 // @description          export smart form answers to markdown/pdf and prompt to autosave unsaved changes
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/docketwise.com/smart-form-export.user.js
 // @grant                none
+// @license              MIT
 // @match                https://app.docketwise.com/*/smart_forms/*/edit*
 // @match                https://app.docketwise.com/smart_forms/*/edit*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/docketwise.com/smart-form-export.user.js
-// @version              1.4.1
+// @version              1.4.2
 // ==/UserScript==
 
 'use strict';

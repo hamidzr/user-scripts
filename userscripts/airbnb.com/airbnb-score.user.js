@@ -4,11 +4,12 @@
 // @description          Wilson lower-bound + page-relative scoring with color-coded score pills, text dimming, sort controls, and all-pages loading
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.airbnb.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-score.user.js
-// @version              1.13.0
+// @version              1.13.1
 // ==/UserScript==
 
 'use strict';

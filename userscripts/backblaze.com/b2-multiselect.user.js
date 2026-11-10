@@ -4,11 +4,12 @@
 // @description          Range selection, modifier-click toggles, and local size sorting in the B2 explorer
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/backblaze.com/b2-multiselect.user.js
 // @grant                none
+// @license              MIT
 // @match                https://*.backblaze.com/b2_browse_files2.htm*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/backblaze.com/b2-multiselect.user.js
-// @version              1.1.0
+// @version              1.1.1
 // ==/UserScript==
 
 'use strict';

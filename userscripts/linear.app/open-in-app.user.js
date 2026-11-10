@@ -4,11 +4,12 @@
 // @description          redirect linear.app workspace URLs to the linear:// desktop scheme. opt out with ?web=1 or #web.
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/linear.app/open-in-app.user.js
 // @grant                none
+// @license              MIT
 // @match                https://linear.app/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/linear.app/open-in-app.user.js
-// @version              0.1.0
+// @version              0.1.1
 // ==/UserScript==
 
 'use strict';

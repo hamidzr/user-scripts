@@ -4,11 +4,12 @@
 // @description          reorder GitHub PR status checks so failures appear first
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/github.com/github.user.js
 // @grant                none
+// @license              MIT
 // @match                https://github.com/*/*/pull/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/github.com/github.user.js
-// @version              0.1.1
+// @version              0.1.2
 // ==/UserScript==
 
 'use strict';

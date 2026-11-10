@@ -4,12 +4,13 @@
 // @description          redirect notion.so page URLs to the notion:// desktop scheme. opt out with ?web=1 or #web.
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/notion.so/open-in-app.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.notion.so/*
 // @match                https://notion.so/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/notion.so/open-in-app.user.js
-// @version              0.2.0
+// @version              0.2.1
 // ==/UserScript==
 
 'use strict';

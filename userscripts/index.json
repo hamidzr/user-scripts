@@ -10,7 +10,7 @@
         {
           "name": "Airbnb Property Plus",
           "description": "Adds quick actions, message templates, and pricing helpers on Airbnb listing pages",
-          "version": "0.5.4",
+          "version": "0.5.5",
           "matches": [
             "https://www.airbnb.com/*"
           ],
@@ -19,7 +19,7 @@
         {
           "name": "Airbnb Listing Score",
           "description": "Wilson lower-bound + page-relative scoring with color-coded score pills, text dimming, sort controls, and all-pages loading",
-          "version": "1.13.0",
+          "version": "1.13.1",
           "matches": [
             "https://www.airbnb.com/*"
           ],
@@ -36,7 +36,7 @@
         {
           "name": "AliExpress Review Score Color Borders",
           "description": "Score, filter, and highlight AliExpress search results",
-          "version": "1.3.0",
+          "version": "1.3.1",
           "matches": [
             "https://www.aliexpress.com/w/*",
             "https://www.aliexpress.us/w/*",
@@ -60,7 +60,7 @@
         {
           "name": "Amazon Review Score Color Borders",
           "description": "Rank Amazon results by a 95% lower bound on star rating, optionally with price",
-          "version": "3.1.0",
+          "version": "3.1.1",
           "matches": [
             "https://www.amazon.com/s*",
             "https://www.amazon.com/*/s*",
@@ -81,7 +81,7 @@
         {
           "name": "Monarch Bulk Select",
           "description": "Shift-click transaction checkboxes in Monarch and export selected transactions",
-          "version": "1.1.1",
+          "version": "1.1.2",
           "matches": [
             "https://app.monarch.com/*",
             "https://app.monarchmoney.com/*"
@@ -91,7 +91,7 @@
         {
           "name": "Monarch Holdings Export",
           "description": "Add an Export CSV button to the Monarch investment holdings page",
-          "version": "1.1.0",
+          "version": "1.1.1",
           "matches": [
             "https://app.monarch.com/*",
             "https://app.monarchmoney.com/*"
@@ -109,7 +109,7 @@
         {
           "name": "Backblaze B2 Multiselect",
           "description": "Range selection, modifier-click toggles, and local size sorting in the B2 explorer",
-          "version": "1.1.0",
+          "version": "1.1.1",
           "matches": [
             "https://*.backblaze.com/b2_browse_files2.htm*"
           ],
@@ -126,7 +126,7 @@
         {
           "name": "Booking Hotel Links",
           "description": "Adds external hotel search links on Booking.com property pages",
-          "version": "0.1.3",
+          "version": "0.1.4",
           "matches": [
             "https://www.booking.com/hotel/*"
           ],
@@ -135,7 +135,7 @@
         {
           "name": "Booking Listing Score",
           "description": "Conservative review-count-aware scores for Booking.com list cards and map pins",
-          "version": "0.2.0",
+          "version": "0.2.1",
           "matches": [
             "https://www.booking.com/searchresults.html*"
           ],
@@ -152,7 +152,7 @@
         {
           "name": "Zoom link upgrader",
           "description": "Swap http Zoom meeting links to zoommtg:// links",
-          "version": "0.2.0",
+          "version": "0.2.1",
           "matches": [
             "https://calendar.google.com/*"
           ],
@@ -169,7 +169,7 @@
         {
           "name": "ChatGPT Shortcuts",
           "description": "Map Ctrl+N and Ctrl+F to ChatGPT actions",
-          "version": "1.1.0",
+          "version": "1.1.1",
           "matches": [
             "https://chatgpt.com/*",
             "https://chat.openai.com/*"
@@ -187,7 +187,7 @@
         {
           "name": "Datadog Log Title",
           "description": "Extend Datadog Log Explorer tab titles with key query facets so many open tabs stay distinguishable",
-          "version": "0.2.0",
+          "version": "0.2.1",
           "matches": [
             "https://app.datadoghq.com/logs*",
             "https://app.datadoghq.eu/logs*",
@@ -208,7 +208,7 @@
         {
           "name": "Docketwise Smart Form Export",
           "description": "Export smart form answers to markdown/pdf and prompt to autosave unsaved changes",
-          "version": "1.4.1",
+          "version": "1.4.2",
           "matches": [
             "https://app.docketwise.com/*/smart_forms/*/edit*",
             "https://app.docketwise.com/smart_forms/*/edit*"
@@ -226,7 +226,7 @@
         {
           "name": "eBay Search Enhancer",
           "description": "Preserve filters on search, add reset button, highlight keywords including negative keywords in red",
-          "version": "1.3.2",
+          "version": "1.3.3",
           "matches": [
             "https://www.ebay.com/*",
             "https://www.ebay.com.au/*",
@@ -238,7 +238,7 @@
         {
           "name": "eBay Label Max Package",
           "description": "Find the largest weight and dimensions that keep the selected label price",
-          "version": "0.2.0",
+          "version": "0.2.1",
           "matches": [
             "https://www.ebay.com/ship/single/*"
           ],
@@ -247,7 +247,7 @@
         {
           "name": "eBay Sponsored Listings Highlighter",
           "description": "Colors eBay's native Sponsored labels red",
-          "version": "1.10.0",
+          "version": "1.10.1",
           "matches": [
             "https://www.ebay.com/*"
           ],
@@ -264,7 +264,7 @@
         {
           "name": "Gemini Auto-focus",
           "description": "Focus the editor, default to the 4 Argon model with Medium thinking, and map Ctrl+N / Ctrl+F to Gemini actions",
-          "version": "1.6.1",
+          "version": "1.6.2",
           "matches": [
             "https://gemini.google.com/*"
           ],
@@ -281,7 +281,7 @@
         {
           "name": "GitHub PullRequests Plus",
           "description": "Display diff stats next to each pull request in the list view",
-          "version": "0.4.0",
+          "version": "0.4.1",
           "matches": [
             "https://github.com/*/*/pulls",
             "https://github.com/*/*/pulls/*"
@@ -291,7 +291,7 @@
         {
           "name": "GitHub Status Checks",
           "description": "Reorder GitHub PR status checks so failures appear first",
-          "version": "0.1.1",
+          "version": "0.1.2",
           "matches": [
             "https://github.com/*/*/pull/*"
           ],
@@ -308,7 +308,7 @@
         {
           "name": "Google Feeling Lucky Redirect",
           "description": "Automatically redirects to the first result when a \"Feeling Lucky\" search link is opened",
-          "version": "0.1.0",
+          "version": "0.1.1",
           "matches": [
             "https://*.google.com/search?q=*",
             "https://*.google.com/url?q=*"
@@ -318,7 +318,7 @@
         {
           "name": "Google Travel Links",
           "description": "Adds Booking and Super shortcuts to Google Travel hotel pages",
-          "version": "0.1.0",
+          "version": "0.1.1",
           "matches": [
             "https://www.google.com/travel/*"
           ],
@@ -335,7 +335,7 @@
         {
           "name": "Hostelworld Enhancer",
           "description": "Review search panel with live regex filter + quick search buttons",
-          "version": "2.0.4",
+          "version": "2.0.5",
           "matches": [
             "https://www.hostelworld.com/*"
           ],
@@ -352,7 +352,7 @@
         {
           "name": "Kiwi Saved Searches",
           "description": "Saves and reloads one-way Kiwi.com flight searches",
-          "version": "0.1.0",
+          "version": "0.1.1",
           "matches": [
             "https://www.kiwi.com/*"
           ],
@@ -369,7 +369,7 @@
         {
           "name": "Linear: open in desktop app",
           "description": "Redirect linear.app workspace URLs to the linear:// desktop scheme. opt out with ?web=1 or #web.",
-          "version": "0.1.0",
+          "version": "0.1.1",
           "matches": [
             "https://linear.app/*"
           ],
@@ -386,7 +386,7 @@
         {
           "name": "Google Meet - Auto Leave on Empty",
           "description": "Detects when participants drop and prompts to leave with a countdown",
-          "version": "1.1.0",
+          "version": "1.1.1",
           "matches": [
             "https://meet.google.com/*"
           ],
@@ -395,7 +395,7 @@
         {
           "name": "Google Meet - Auto Mute on Join",
           "description": "Automatically disables microphone and camera on the Google Meet join screen",
-          "version": "1.1.0",
+          "version": "1.1.1",
           "matches": [
             "https://meet.google.com/*"
           ],
@@ -412,7 +412,7 @@
         {
           "name": "Google Messages Latest Login Code",
           "description": "Surface the most recent login / verification code from Google Messages for one-click copying",
-          "version": "1.3.0",
+          "version": "1.3.1",
           "matches": [
             "https://messages.google.com/web/*"
           ],
@@ -429,7 +429,7 @@
         {
           "name": "Notion: open in desktop app",
           "description": "Redirect notion.so page URLs to the notion:// desktop scheme. opt out with ?web=1 or #web.",
-          "version": "0.2.0",
+          "version": "0.2.1",
           "matches": [
             "https://www.notion.so/*",
             "https://notion.so/*"
@@ -447,7 +447,7 @@
         {
           "name": "Grocery Food Facts",
           "description": "Show Open Food Facts scores, allergens, additives, and nutrition on Walmart and H-E-B product pages, compare Walmart products per 100 g, and flag listings that contradict their ingredients",
-          "version": "1.4.0",
+          "version": "1.4.1",
           "matches": [
             "https://www.walmart.com/*",
             "https://www.heb.com/*"
@@ -465,7 +465,7 @@
         {
           "name": "Super.com Enhancer",
           "description": "Map pins show total price, list cards bold total, hotel detail adds search buttons",
-          "version": "1.0.4",
+          "version": "1.0.5",
           "matches": [
             "https://www.super.com/home/travel*",
             "https://www.super.com/travel/*"
@@ -483,7 +483,7 @@
         {
           "name": "Google Voice Latest Login Code",
           "description": "Surface the most recent login / verification code from Google Voice texts for one-click copying",
-          "version": "1.3.0",
+          "version": "1.3.1",
           "matches": [
             "https://voice.google.com/*"
           ],

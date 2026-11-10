@@ -4,11 +4,12 @@
 // @description          find the largest weight and dimensions that keep the selected label price
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-ship-max-package.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.ebay.com/ship/single/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-ship-max-package.user.js
-// @version              0.2.0
+// @version              0.2.1
 // ==/UserScript==
 
 'use strict';

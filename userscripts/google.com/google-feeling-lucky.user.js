@@ -4,12 +4,13 @@
 // @description          automatically redirects to the first result when a "Feeling Lucky" search link is opened
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/google.com/google-feeling-lucky.user.js
 // @grant                none
+// @license              MIT
 // @match                https://*.google.com/search?q=*
 // @match                https://*.google.com/url?q=*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/google.com/google-feeling-lucky.user.js
-// @version              0.1.0
+// @version              0.1.1
 // ==/UserScript==
 
 'use strict';

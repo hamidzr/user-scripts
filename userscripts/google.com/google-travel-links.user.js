@@ -4,11 +4,12 @@
 // @description          adds Booking and Super shortcuts to Google Travel hotel pages
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/google.com/google-travel-links.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.google.com/travel/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/google.com/google-travel-links.user.js
-// @version              0.1.0
+// @version              0.1.1
 // ==/UserScript==
 
 'use strict';

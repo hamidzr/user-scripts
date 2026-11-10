@@ -4,12 +4,13 @@
 // @description          add an Export CSV button to the Monarch investment holdings page
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-holdings-export.user.js
 // @grant                none
+// @license              MIT
 // @match                https://app.monarch.com/*
 // @match                https://app.monarchmoney.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-holdings-export.user.js
-// @version              1.1.0
+// @version              1.1.1
 // ==/UserScript==
 
 'use strict';

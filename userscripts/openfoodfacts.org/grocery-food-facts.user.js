@@ -5,12 +5,13 @@
 // @description          show Open Food Facts scores, allergens, additives, and nutrition on Walmart and H-E-B product pages, compare Walmart products per 100 g, and flag listings that contradict their ingredients
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/openfoodfacts.org/grocery-food-facts.user.js
 // @grant                GM_xmlhttpRequest
+// @license              MIT
 // @match                https://www.walmart.com/*
 // @match                https://www.heb.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/openfoodfacts.org/grocery-food-facts.user.js
-// @version              1.4.0
+// @version              1.4.1
 // ==/UserScript==
 
 'use strict';

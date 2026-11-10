@@ -4,11 +4,12 @@
 // @description          Adds quick actions, message templates, and pricing helpers on Airbnb listing pages
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-property-plus.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.airbnb.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/airbnb.com/airbnb-property-plus.user.js
-// @version              0.5.4
+// @version              0.5.5
 // ==/UserScript==
 
 'use strict';

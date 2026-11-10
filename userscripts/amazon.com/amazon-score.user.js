@@ -4,6 +4,7 @@
 // @description          rank Amazon results by a 95% lower bound on star rating, optionally with price
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/amazon.com/amazon-score.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.amazon.com/s*
 // @match                https://www.amazon.com/*/s*
 // @match                https://www.amazon.com/*/b/*
@@ -12,7 +13,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/amazon.com/amazon-score.user.js
-// @version              3.1.0
+// @version              3.1.1
 // ==/UserScript==
 
 'use strict';

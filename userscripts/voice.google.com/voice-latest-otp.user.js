@@ -4,11 +4,12 @@
 // @description          surface the most recent login / verification code from Google Voice texts for one-click copying
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/voice.google.com/voice-latest-otp.user.js
 // @grant                none
+// @license              MIT
 // @match                https://voice.google.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/voice.google.com/voice-latest-otp.user.js
-// @version              1.3.0
+// @version              1.3.1
 // ==/UserScript==
 
 'use strict';

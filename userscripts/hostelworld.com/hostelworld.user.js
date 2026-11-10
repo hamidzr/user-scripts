@@ -4,11 +4,12 @@
 // @description          review search panel with live regex filter + quick search buttons
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/hostelworld.com/hostelworld.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.hostelworld.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/hostelworld.com/hostelworld.user.js
-// @version              2.0.4
+// @version              2.0.5
 // ==/UserScript==
 
 'use strict';

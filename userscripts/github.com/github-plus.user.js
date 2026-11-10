@@ -4,12 +4,13 @@
 // @description          display diff stats next to each pull request in the list view
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/github.com/github-plus.user.js
 // @grant                none
+// @license              MIT
 // @match                https://github.com/*/*/pulls
 // @match                https://github.com/*/*/pulls/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/github.com/github-plus.user.js
-// @version              0.4.0
+// @version              0.4.1
 // ==/UserScript==
 
 'use strict';

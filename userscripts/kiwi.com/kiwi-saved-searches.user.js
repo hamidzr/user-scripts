@@ -4,11 +4,12 @@
 // @description          saves and reloads one-way Kiwi.com flight searches
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/kiwi.com/kiwi-saved-searches.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.kiwi.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/kiwi.com/kiwi-saved-searches.user.js
-// @version              0.1.0
+// @version              0.1.1
 // ==/UserScript==
 
 'use strict';

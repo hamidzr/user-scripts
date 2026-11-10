@@ -4,12 +4,13 @@
 // @description          shift-click transaction checkboxes in Monarch and export selected transactions
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
 // @grant                none
+// @license              MIT
 // @match                https://app.monarch.com/*
 // @match                https://app.monarchmoney.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-bulk-select.user.js
-// @version              1.1.1
+// @version              1.1.2
 // ==/UserScript==
 
 'use strict';

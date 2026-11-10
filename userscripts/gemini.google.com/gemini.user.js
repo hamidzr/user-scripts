@@ -6,11 +6,12 @@
 // @grant                GM_getValue
 // @grant                GM_setValue
 // @grant                GM_registerMenuCommand
+// @license              MIT
 // @match                https://gemini.google.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
-// @version              1.6.1
+// @version              1.6.2
 // ==/UserScript==
 
 'use strict';

@@ -4,6 +4,7 @@
 // @description          score, filter, and highlight AliExpress search results
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/aliexpress.com/aliexpress-score.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.aliexpress.com/w/*
 // @match                https://www.aliexpress.us/w/*
 // @match                https://www.aliexpress.com/af/*
@@ -15,7 +16,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/aliexpress.com/aliexpress-score.user.js
-// @version              1.3.0
+// @version              1.3.1
 // ==/UserScript==
 
 'use strict';

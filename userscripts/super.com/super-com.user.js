@@ -4,12 +4,13 @@
 // @description          map pins show total price, list cards bold total, hotel detail adds search buttons
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.super.com/home/travel*
 // @match                https://www.super.com/travel/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/super.com/super-com.user.js
-// @version              1.0.4
+// @version              1.0.5
 // ==/UserScript==
 
 'use strict';

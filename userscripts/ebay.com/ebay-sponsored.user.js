@@ -4,11 +4,12 @@
 // @description          colors eBay's native Sponsored labels red
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-sponsored.user.js
 // @grant                none
+// @license              MIT
 // @match                https://www.ebay.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/ebay.com/ebay-sponsored.user.js
-// @version              1.10.0
+// @version              1.10.1
 // ==/UserScript==
 
 'use strict';

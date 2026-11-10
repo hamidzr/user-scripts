@@ -4,11 +4,12 @@
 // @description          swap http Zoom meeting links to zoommtg:// links
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/calendar.google.com/zoom-links.user.js
 // @grant                none
+// @license              MIT
 // @match                https://calendar.google.com/*
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/calendar.google.com/zoom-links.user.js
-// @version              0.2.0
+// @version              0.2.1
 // ==/UserScript==
 
 'use strict';
