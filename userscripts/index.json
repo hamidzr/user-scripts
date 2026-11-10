@@ -352,7 +352,7 @@
         {
           "name": "Kiwi Saved Searches",
           "description": "Saves and reloads one-way Kiwi.com flight searches",
-          "version": "0.1.1",
+          "version": "0.4.0",
           "matches": [
             "https://www.kiwi.com/*"
           ],
