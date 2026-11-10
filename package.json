@@ -18,7 +18,7 @@
     "greasemonkey"
   ],
   "author": "Hamid Zare",
-  "license": "GPLV2",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/hamidzr/user-scripts/issues"
   },
