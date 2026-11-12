@@ -101,6 +101,23 @@
       ]
     },
     {
+      "site": "app.t3.codes",
+      "title": "T3 Code Userscripts",
+      "summary": "Closes the leftover app.t3.codes browser tab once a T3 Code thread or prompt link has opened in the T3 Code desktop app.",
+      "pageUrl": "https://latentbyte.com/products/t3-code-userscripts",
+      "scripts": [
+        {
+          "name": "T3 Code: close tab after opening desktop app",
+          "description": "Close the leftover app.t3.codes tab once a thread or prompt link has opened in the T3 Code desktop app",
+          "version": "0.1.0",
+          "matches": [
+            "https://app.t3.codes/*"
+          ],
+          "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.t3.codes/close-handoff-tab.user.js"
+        }
+      ]
+    },
+    {
       "site": "backblaze.com",
       "title": "Backblaze B2 Userscripts",
       "summary": "Adds Shift+click range selection, modifier-click toggling, and largest-first size sorting to the Backblaze B2 file browser, so bulk actions take fewer clicks.",
@@ -412,7 +429,7 @@
         {
           "name": "Google Messages Latest Login Code",
           "description": "Surface the most recent login / verification code from Google Messages for one-click copying",
-          "version": "1.3.1",
+          "version": "1.3.2",
           "matches": [
             "https://messages.google.com/web/*"
           ],
@@ -483,7 +500,7 @@
         {
           "name": "Google Voice Latest Login Code",
           "description": "Surface the most recent login / verification code from Google Voice texts for one-click copying",
-          "version": "1.3.1",
+          "version": "1.3.2",
           "matches": [
             "https://voice.google.com/*"
           ],

@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/voice.google.com/voice-latest-otp.user.js
-// @version              1.3.1
+// @version              1.3.2
 // ==/UserScript==
 
 'use strict';
@@ -391,8 +391,17 @@ click to copy`;
   // src/lib/otp.ts
   var KEYWORD_RE = /\b(?:code|passcode|pin|otp|one[- ]time|verif\w*|auth\w*|sign[- ]?in|log[- ]?in|security|2fa|token)\b/gi;
   var CANDIDATE_RE = /(?<![\w$.,-])(\d{3}[- ]\d{3}|\d{4,8})(?![\w%]|[.,:-]\d)/g;
+  var PHRASE_RES = [
+    /\buse (\d{3}[- ]\d{3}|\d{4,8}) to\b/i,
+    /(?<![\w$.,-])(\d{3}[- ]\d{3}|\d{4,8}) is your\b/i
+  ];
   var extractOtpCode = (text) => {
     const normalized = text.replace(/\b[A-Z]-(\d{4,8})\b/g, " $1");
+    for (const re of PHRASE_RES) {
+      const m = normalized.match(re);
+      if (m)
+        return m[1].replace(/[- ]/g, "");
+    }
     const keywordIdx = [...normalized.matchAll(KEYWORD_RE)].map((m) => m.index ?? 0);
     if (!keywordIdx.length)
       return null;
