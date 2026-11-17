@@ -60,7 +60,7 @@
         {
           "name": "Amazon Review Score Color Borders",
           "description": "Rank Amazon results by a 95% lower bound on star rating, optionally with price",
-          "version": "3.1.1",
+          "version": "3.1.2",
           "matches": [
             "https://www.amazon.com/s*",
             "https://www.amazon.com/*/s*",
@@ -151,8 +151,8 @@
         },
         {
           "name": "Booking Listing Score",
-          "description": "Conservative review-count-aware scores for Booking.com list cards and map pins",
-          "version": "0.2.1",
+          "description": "Conservative review-count-aware scores for Booking.com list cards and map pins, with score and value sorting",
+          "version": "0.3.0",
           "matches": [
             "https://www.booking.com/searchresults.html*"
           ],
@@ -346,13 +346,13 @@
     {
       "site": "hostelworld.com",
       "title": "Hostelworld Userscripts",
-      "summary": "This userscript adds a review search panel to Hostelworld property pages so review text is easier to search and compare.",
+      "summary": "Ranks Hostelworld results by rating and review count, and adds a review search panel to property pages so review text is easier to search and compare.",
       "pageUrl": "https://latentbyte.com/products/hostelworld-userscripts",
       "scripts": [
         {
           "name": "Hostelworld Enhancer",
-          "description": "Review search panel with live regex filter + quick search buttons",
-          "version": "2.0.5",
+          "description": "Review-aware listing scores with score/value sorting, review search panel with live regex filter + quick search buttons",
+          "version": "2.1.0",
           "matches": [
             "https://www.hostelworld.com/*"
           ],

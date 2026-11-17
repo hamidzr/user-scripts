@@ -13,7 +13,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/amazon.com/amazon-score.user.js
-// @version              3.1.1
+// @version              3.1.2
 // ==/UserScript==
 
 'use strict';
@@ -50,7 +50,8 @@
     }
     return ranks;
   };
-  var scoreToStars = (score) => 1 + 4 * score;
+  var scoreToScale = (score, lo, hi) => lo + (hi - lo) * score;
+  var scoreToStars = (score) => scoreToScale(score, 1, 5);
   var computeReviewFinalScore = (lb, rel) => 0.75 * lb + 0.25 * rel;
   var scoreLowerBoundEntries = (entries) => {
     if (!entries.length)
@@ -67,6 +68,19 @@
         finalStars: scoreToStars(final)
       };
     });
+  };
+  var median = (values) => {
+    const sorted = values.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+  var PRICE_SHIFT_PER_DOUBLING = 0.0375;
+  var PRICE_SHIFT_CAP = 0.125;
+  var priceShift = (ratio) => {
+    if (ratio === null || ratio <= 0)
+      return 0;
+    const shift = -PRICE_SHIFT_PER_DOUBLING * Math.log2(ratio);
+    return clip(shift, -PRICE_SHIFT_CAP, PRICE_SHIFT_CAP);
   };
   var getColorForScore = (score, maxChannel = 255) => {
     const max = Math.max(0, maxChannel);
@@ -329,11 +343,6 @@
       unit: unitMatch ? unitMatch[2].trim().toLowerCase().replace(/\s+/g, " ") : null
     };
   };
-  var median = (values) => {
-    const sorted = values.slice().sort((a, b) => a - b);
-    const mid = Math.floor(sorted.length / 2);
-    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
-  };
   var MIN_PRICE_PEERS = 3;
   var MAX_UNIT_DISAGREEMENT = 50;
   var computePriceRatios = (prices) => {
@@ -363,8 +372,6 @@
     });
   };
   var FLOOR_STARS = 4.3;
-  var NUDGE_PER_DOUBLING = 0.15;
-  var NUDGE_CAP = 0.5;
   var BLEND_PRICE_WEIGHT = 0.3;
   var SORT_MODES = [
     { id: "nudge", label: "Rating + price (recommended)" },
@@ -384,12 +391,7 @@
     return raw.sortByScore === true ? "rating" : DEFAULT_SORT_MODE;
   };
   var isPriceMode = (mode) => mode === "nudge" || mode === "blend" || mode === "floor";
-  var nudgeStars = (lbStars, ratio) => {
-    if (ratio === null || ratio <= 0)
-      return lbStars;
-    const shift = -NUDGE_PER_DOUBLING * Math.log2(ratio);
-    return lbStars + Math.max(-NUDGE_CAP, Math.min(NUDGE_CAP, shift));
-  };
+  var nudgeStars = (lbStars, ratio) => lbStars + 4 * priceShift(ratio);
   var prepareRankRows = (inputs) => {
     const ratios = computePriceRatios(inputs.map((d) => d.lbStars === null ? null : d.price));
     const priced = ratios.flatMap((r, i) => r === null ? [] : [{ r, i }]);

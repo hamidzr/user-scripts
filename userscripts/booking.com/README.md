@@ -10,6 +10,7 @@ Adds a review-aware score pill to each result on Booking.com search pages.
 - colors each pill relative to the other results on the page (red to yellow to green)
 - shows the score on Booking's own 1-10 scale next to the property title: a 95% lower bound on the guest rating given its review count, so a 9.3 from 1,500 reviews stays about 9.2 while an 8.2 from 12 reviews shows 6.1; hover for the rating, review count, and page rank
 - also marks map pins with a score pill, matched to the pin by total stay price
+- adds a **Sort by** control at the bottom left: Site order (default), Score, or Score + price, which nudges the score up for results cheaper than the page median and down for pricier ones, capped so price never outweighs quality
 - re-scores as you scroll, filter, or load more results
 
 ![Booking Listing Score pill on a search result](./demo/booking-score-card.jpg)
@@ -33,6 +34,11 @@ Runs on `booking.com/hotel/*`.
 - scores are relative to the results currently loaded on the page
 - map pin scores are matched by price, so pins sharing a price show an averaged score
 - price parsing expects dollar amounts
+- sorting reorders the results already loaded; results loaded later join the order on the next pass
+
+## Storage
+
+- `lb-sort-booking` (localStorage): the chosen sort
 
 ## Related
 

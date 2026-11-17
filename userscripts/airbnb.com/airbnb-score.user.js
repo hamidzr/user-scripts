@@ -1033,7 +1033,8 @@ body.ab-option-held .ab-agg-tile:hover .ab-agg-strip {
     }
     return ranks;
   };
-  var scoreToStars = (score) => 1 + 4 * score;
+  var scoreToScale = (score, lo, hi) => lo + (hi - lo) * score;
+  var scoreToStars = (score) => scoreToScale(score, 1, 5);
   var computeReviewFinalScore = (lb, rel) => 0.75 * lb + 0.25 * rel;
   var scoreLowerBoundEntries = (entries) => {
     if (!entries.length)

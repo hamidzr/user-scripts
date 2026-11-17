@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name                 Booking Listing Score
 // @author               AZ
-// @description          conservative review-count-aware scores for Booking.com list cards and map pins
+// @description          conservative review-count-aware scores for Booking.com list cards and map pins, with score and value sorting
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-score.user.js
 // @grant                none
 // @license              MIT
@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-body
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/booking.com/booking-score.user.js
-// @version              0.2.1
+// @version              0.3.0
 // ==/UserScript==
 
 'use strict';
@@ -240,7 +240,8 @@
     }
     return ranks;
   };
-  var scoreToStars = (score) => 1 + 4 * score;
+  var scoreToScale = (score, lo, hi) => lo + (hi - lo) * score;
+  var scoreToStars = (score) => scoreToScale(score, 1, 5);
   var computeReviewFinalScore = (lb, rel) => 0.75 * lb + 0.25 * rel;
   var scoreLowerBoundEntries = (entries) => {
     if (!entries.length)
@@ -257,6 +258,30 @@
         finalStars: scoreToStars(final)
       };
     });
+  };
+  var scoreScaledRatingEntries = (entries, lo, hi) => scoreLowerBoundEntries(entries.map((entry) => ({
+    ...entry,
+    lb: boundedMeanLB(entry.rating, entry.reviewCount, lo, hi)
+  })));
+  var median = (values) => {
+    const sorted = values.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+  var PRICE_SHIFT_PER_DOUBLING = 0.0375;
+  var PRICE_SHIFT_CAP = 0.125;
+  var priceShift = (ratio) => {
+    if (ratio === null || ratio <= 0)
+      return 0;
+    const shift = -PRICE_SHIFT_PER_DOUBLING * Math.log2(ratio);
+    return clip(shift, -PRICE_SHIFT_CAP, PRICE_SHIFT_CAP);
+  };
+  var medianPriceRatios = (prices, minPeers = 3) => {
+    const known = prices.filter((price) => price !== null && price > 0);
+    if (known.length < minPeers)
+      return prices.map(() => null);
+    const mid = median(known);
+    return prices.map((price) => price !== null && price > 0 ? price / mid : null);
   };
   var getColorForScore = (score, maxChannel = 255) => {
     const max = Math.max(0, maxChannel);
@@ -278,6 +303,231 @@
     return Math.round(parseFloat(trimmed.replace(/[,kKmM]/g, "")) * multiplier);
   };
 
+  // src/lib/store.ts
+  var LOCAL_STORAGE_ADAPTER = {
+    name: "localStorage",
+    readText: (key) => {
+      return localStorage.getItem(key);
+    },
+    writeText: (key, value) => {
+      localStorage.setItem(key, value);
+    }
+  };
+  var getAdapters = (adapters) => {
+    return adapters?.length ? adapters : [LOCAL_STORAGE_ADAPTER];
+  };
+  var reportError = (opts, error, ctx) => {
+    opts?.onError?.(error, ctx);
+  };
+  var readRawStore = (key, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        return adapter.readText(key);
+      } catch (error) {
+        reportError(opts, error, {
+          action: "read",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return null;
+  };
+  var readTextStore = (key, fallback, opts) => {
+    const value = readRawStore(key, opts);
+    return value === null ? fallback : value;
+  };
+  var writeTextStore = (key, value, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        adapter.writeText(key, value);
+        return true;
+      } catch (error) {
+        reportError(opts, error, {
+          action: "write",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return false;
+  };
+
+  // src/lib/listing-sort.ts
+  var LISTING_SORT_MODES = [
+    { id: "site", label: "Site order" },
+    { id: "score", label: "Score" },
+    { id: "value", label: "Score + price" }
+  ];
+  var parseListingSortMode = (value) => LISTING_SORT_MODES.find((mode) => mode.id === value)?.id ?? "site";
+  var readListingSortMode = (storeKey) => parseListingSortMode(readTextStore(storeKey, "site"));
+  var listingSortValue = (lb, priceRatio, mode) => {
+    if (lb === null)
+      return null;
+    return mode === "value" ? lb + priceShift(priceRatio) : lb;
+  };
+  var computeChildOrder = (children) => {
+    const rowIndexes = children.flatMap((child, i) => child.isRow ? [i] : []);
+    const firstRow = rowIndexes[0] ?? children.length;
+    const ranked = rowIndexes.slice().sort((a, b) => {
+      const va = children[a].value;
+      const vb = children[b].value;
+      if (va === null || vb === null)
+        return va === vb ? a - b : va === null ? 1 : -1;
+      return vb - va || a - b;
+    });
+    const rank = new Map(ranked.map((index, position) => [index, position]));
+    return children.map((child, i) => {
+      if (child.isRow)
+        return rank.get(i);
+      return i < firstRow ? i - firstRow : rowIndexes.length + i;
+    });
+  };
+  var ORDER_ATTR = "data-lb-sort";
+  var FLEX_ATTR = "data-lb-sort-flex";
+  var CONTROL_STYLE_ID = "lb-listing-sort-style";
+  var CONTROL_CSS = `
+  .lb-listing-sort {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 2147483000;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    background: #fff;
+    color: #1a1a1a;
+    font: 600 12px/1.2 system-ui, sans-serif;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  }
+
+  .lb-listing-sort select {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+`;
+  var containsCard = (el, cardSel) => el.matches(cardSel) || el.querySelector(cardSel) !== null;
+  var findRow = (card, cardSel) => {
+    let el = card;
+    while (el.parentElement && el.parentElement !== document.body) {
+      const parent = el.parentElement;
+      let cardChildren = 0;
+      for (const child of Array.from(parent.children)) {
+        if (containsCard(child, cardSel) && ++cardChildren >= 2)
+          return el;
+      }
+      el = parent;
+    }
+    return null;
+  };
+  var setOrder = (el, order) => {
+    if (el.style.order !== order)
+      el.style.order = order;
+    if (!el.hasAttribute(ORDER_ATTR))
+      el.setAttribute(ORDER_ATTR, "");
+  };
+  var clearOrder = () => {
+    document.querySelectorAll(`[${ORDER_ATTR}]`).forEach((el) => {
+      el.style.order = "";
+      el.removeAttribute(ORDER_ATTR);
+    });
+    document.querySelectorAll(`[${FLEX_ATTR}]`).forEach((el) => {
+      el.style.display = "";
+      el.style.flexDirection = "";
+      el.removeAttribute(FLEX_ATTR);
+    });
+  };
+  var ensureOrderable = (container) => {
+    if (container.hasAttribute(FLEX_ATTR))
+      return true;
+    const display = getComputedStyle(container).display;
+    if (/flex|grid/.test(display))
+      return true;
+    if (display !== "block")
+      return false;
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.setAttribute(FLEX_ATTR, "");
+    return true;
+  };
+  var applyListingOrder = (cards, cardSel, mode) => {
+    if (mode === "site") {
+      clearOrder();
+      return;
+    }
+    const rowValues = new Map;
+    cards.forEach(({ card, value }) => {
+      const row = findRow(card, cardSel);
+      if (!row)
+        return;
+      const prev = rowValues.get(row);
+      rowValues.set(row, prev === undefined || prev === null ? value : Math.max(prev, value ?? prev));
+    });
+    const containers = new Set(Array.from(rowValues.keys()).flatMap((row) => row.parentElement ? [row.parentElement] : []));
+    containers.forEach((container) => {
+      if (!ensureOrderable(container))
+        return;
+      const children = Array.from(container.children);
+      const orders = computeChildOrder(children.map((child) => ({
+        isRow: rowValues.has(child),
+        value: rowValues.get(child) ?? null
+      })));
+      children.forEach((child, i) => setOrder(child, String(orders[i])));
+    });
+  };
+  var ensureListingSortControl = (storeKey, onChange) => {
+    const id = `${storeKey}-control`;
+    if (document.getElementById(id))
+      return;
+    injectCSS(CONTROL_STYLE_ID, CONTROL_CSS);
+    const label = document.createElement("label");
+    label.id = id;
+    label.className = "lb-listing-sort";
+    label.append("Sort by");
+    const select = document.createElement("select");
+    LISTING_SORT_MODES.forEach((mode) => {
+      const option = document.createElement("option");
+      option.value = mode.id;
+      option.textContent = mode.label;
+      select.appendChild(option);
+    });
+    select.value = readListingSortMode(storeKey);
+    select.addEventListener("change", () => {
+      writeTextStore(storeKey, select.value);
+      onChange();
+    });
+    label.appendChild(select);
+    document.body.appendChild(label);
+  };
+
+  // src/lib/score-pill.ts
+  var setTextIfChanged = (el, text) => {
+    if (el.textContent !== text)
+      el.textContent = text;
+  };
+  var setAttrIfChanged = (el, name, value) => {
+    if (el.getAttribute(name) !== value)
+      el.setAttribute(name, value);
+  };
+  var upsertScorePill = (container, insert, opts) => {
+    let pill = container.querySelector(`.${opts.className}`);
+    if (!pill) {
+      pill = document.createElement("span");
+      pill.className = opts.className;
+      insert(pill);
+    }
+    setTextIfChanged(pill, opts.text);
+    setAttrIfChanged(pill, "title", opts.title);
+    setAttrIfChanged(pill, "style", `background: ${getColorForScore(opts.rel)}`);
+    return pill;
+  };
+
   // src/lib/text.ts
   var normalizeWhitespace = (value) => (value ?? "").replace(/\s+/g, " ").trim();
 
@@ -287,6 +537,7 @@
   var MAP_CARD_SELECTOR = '[data-testid="property-list-map-card"]';
   var CARD_SELECTOR = `${LIST_CARD_SELECTOR}, ${MAP_CARD_SELECTOR}`;
   var MARKER_SELECTOR = '[data-testid="custom-price-marker"]';
+  var SORT_STORE_KEY = "lb-sort-booking";
   var CSS = `
   .bk-score-pill {
     display: inline-flex;
@@ -414,28 +665,22 @@
       if (!deduped.has(entry.key))
         deduped.set(entry.key, entry);
     });
-    return scoreLowerBoundEntries(Array.from(deduped.values()).map((entry) => ({
-      ...entry,
-      lb: boundedMeanLB(entry.rating, entry.reviewCount, 1, 10)
-    })));
+    return scoreScaledRatingEntries(Array.from(deduped.values()), 1, 10);
   };
-  var toRating = (lb) => (1 + 9 * lb).toFixed(1);
+  var toRating = (lb) => scoreToScale(lb, 1, 10).toFixed(1);
   var getBadgeAnchor = (card) => {
     return card.querySelector('[data-testid="title"], [data-testid="header-title"]');
   };
-  var upsertCardScore = (card, score) => {
+  var upsertCardScore = (card, score, priceRatio) => {
     const anchor = getBadgeAnchor(card);
     if (!anchor)
       return;
-    let pill = card.querySelector(".bk-score-pill");
-    if (!pill) {
-      pill = document.createElement("span");
-      pill.className = "bk-score-pill";
-      anchor.insertAdjacentElement("afterend", pill);
-    }
-    pill.style.background = getColorForScore(score.rel);
-    pill.textContent = `Score ${toRating(score.lb)}`;
-    pill.title = `${score.rating.toFixed(1)} Booking rating | ${score.reviewCount.toLocaleString()} reviews | ` + `95% lower bound: ${toRating(score.lb)} | page rank: ${score.rel.toFixed(3)}`;
+    upsertScorePill(card, (pill) => anchor.insertAdjacentElement("afterend", pill), {
+      className: "bk-score-pill",
+      text: `Score ${toRating(score.lb)}`,
+      title: `${score.rating.toFixed(1)} Booking rating | ${score.reviewCount.toLocaleString()} reviews | ` + `95% lower bound: ${toRating(score.lb)} | page rank: ${score.rel.toFixed(3)}` + (priceRatio === null ? "" : ` | price: ${priceRatio.toFixed(2)}x page median`),
+      rel: score.rel
+    });
     card.dataset.bkScore = score.lb.toFixed(6);
     card.dataset.bkScoreRel = score.rel.toFixed(6);
   };
@@ -472,14 +717,14 @@
         marker.classList.remove("bk-score-marker");
         return;
       }
-      marker.classList.add("bk-score-marker");
-      const pill = existing ?? document.createElement("span");
-      pill.className = "bk-score-pin-pill";
-      pill.style.background = getColorForScore(score.rel);
-      pill.textContent = toRating(score.lb);
-      pill.title = `Booking score ${pill.textContent}`;
-      if (!existing)
-        marker.appendChild(pill);
+      if (!marker.classList.contains("bk-score-marker"))
+        marker.classList.add("bk-score-marker");
+      upsertScorePill(marker, (pill) => marker.appendChild(pill), {
+        className: "bk-score-pin-pill",
+        text: toRating(score.lb),
+        title: `Booking score ${toRating(score.lb)}`,
+        rel: score.rel
+      });
     });
   };
   var processCards = () => {
@@ -488,12 +733,29 @@
     const parsedCards = cards.map(parseCard).filter((entry) => entry !== null);
     const scores = scoreEntries(parsedCards);
     const scoresByKey = new Map(scores.map((score) => [score.key, score]));
+    const ratios = medianPriceRatios(scores.map((score) => score.priceTotal));
+    const ratioByKey = new Map(scores.map((score, i) => [score.key, ratios[i]]));
     parsedCards.forEach((entry) => {
       const score = scoresByKey.get(entry.key);
       if (score)
-        upsertCardScore(entry.card, score);
+        upsertCardScore(entry.card, score, ratioByKey.get(entry.key) ?? null);
     });
     upsertPinScores(buildPinScoreMap(scores));
+    sortListCards(parsedCards, scoresByKey, ratioByKey);
+  };
+  var sortListCards = (parsedCards, scoresByKey, ratioByKey) => {
+    if (scoresByKey.size < 2)
+      return;
+    ensureListingSortControl(SORT_STORE_KEY, () => processCards());
+    const mode = readListingSortMode(SORT_STORE_KEY);
+    const keyByCard = new Map(parsedCards.map((entry) => [entry.card, entry.key]));
+    const cards = Array.from(document.querySelectorAll(LIST_CARD_SELECTOR));
+    const sortable = cards.map((card) => {
+      const key = keyByCard.get(card);
+      const lb = key ? scoresByKey.get(key)?.lb ?? null : null;
+      return { card, value: listingSortValue(lb, key ? ratioByKey.get(key) ?? null : null, mode) };
+    });
+    applyListingOrder(sortable, LIST_CARD_SELECTOR, mode);
   };
   var observer = observeDomChanges(processCards, {
     root: document.body,

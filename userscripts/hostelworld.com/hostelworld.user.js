@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name                 Hostelworld Enhancer
 // @author               AZ
-// @description          review search panel with live regex filter + quick search buttons
+// @description          review-aware listing scores with score/value sorting, review search panel with live regex filter + quick search buttons
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/hostelworld.com/hostelworld.user.js
 // @grant                none
 // @license              MIT
@@ -9,7 +9,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-start
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/hostelworld.com/hostelworld.user.js
-// @version              2.0.5
+// @version              2.1.0
 // ==/UserScript==
 
 'use strict';
@@ -734,7 +734,499 @@
 .hw-sb-btn-tripadv {
   background: #00aa6c;
 }
+
+.hw-score-pill {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 6px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  color: #000;
+  font:
+    800 11px/1.4 system-ui,
+    sans-serif;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.22);
+  white-space: nowrap;
+}
+
+.property-card-container .rating:has(.hw-score-pill) {
+  flex-wrap: wrap;
+  row-gap: 4px;
+}
 `;
+
+  // src/lib/dom-observe.ts
+  var DEFAULT_INIT = {
+    childList: true,
+    subtree: true
+  };
+  var observeDomChanges = (run, opts) => {
+    let timer = null;
+    let disconnectTimer = null;
+    let currentTarget = opts?.root ?? null;
+    let currentInit = opts?.observerInit ?? DEFAULT_INIT;
+    const disconnect = () => {
+      if (timer) {
+        window.clearTimeout(timer);
+        timer = null;
+      }
+      if (disconnectTimer) {
+        window.clearTimeout(disconnectTimer);
+        disconnectTimer = null;
+      }
+      observer.disconnect();
+    };
+    const refreshDisconnectTimer = () => {
+      if (disconnectTimer)
+        window.clearTimeout(disconnectTimer);
+      if (!opts?.disconnectAfterMs)
+        return;
+      disconnectTimer = window.setTimeout(() => {
+        disconnect();
+      }, opts.disconnectAfterMs);
+    };
+    const scheduleRun = () => {
+      if (timer)
+        window.clearTimeout(timer);
+      const debounceMs = opts?.debounceMs ?? 0;
+      if (debounceMs <= 0) {
+        run();
+        refreshDisconnectTimer();
+        return;
+      }
+      timer = window.setTimeout(() => {
+        timer = null;
+        run();
+        refreshDisconnectTimer();
+      }, debounceMs);
+    };
+    const observer = new MutationObserver((mutations) => {
+      if (opts?.shouldRun && !opts.shouldRun(mutations))
+        return;
+      scheduleRun();
+    });
+    const observe = (target, options) => {
+      const nextTarget = target ?? currentTarget ?? document.body;
+      if (!nextTarget)
+        return;
+      currentTarget = nextTarget;
+      currentInit = options ?? currentInit;
+      observer.disconnect();
+      observer.observe(nextTarget, currentInit);
+      refreshDisconnectTimer();
+    };
+    if (opts?.runImmediately)
+      scheduleRun();
+    return {
+      disconnect,
+      observe
+    };
+  };
+
+  // src/lib/scoring.ts
+  var clip = (x, lo, hi) => Math.max(lo, Math.min(hi, x));
+  var boundedMeanLB = (mean, reviewCount, lo, hi, z = 1.645) => {
+    if (!mean || !reviewCount)
+      return 0;
+    const p = clip((mean - lo) / (hi - lo), 0, 1);
+    const n = reviewCount;
+    const z2 = z * z;
+    const numerator = p + z2 / (2 * n) - z * Math.sqrt((p * (1 - p) + z2 / (4 * n)) / n);
+    return numerator / (1 + z2 / n);
+  };
+  var avgRanks = (values) => {
+    const N = values.length;
+    if (N <= 1)
+      return [0];
+    const indexed = values.map((v, i) => ({ v, i }));
+    indexed.sort((a, b) => a.v - b.v);
+    const ranks = new Array(N);
+    let pos = 0;
+    while (pos < N) {
+      let end = pos + 1;
+      while (end < N && indexed[end].v === indexed[pos].v)
+        end++;
+      const avg = (pos + end - 1) / 2;
+      for (let k = pos;k < end; k++)
+        ranks[indexed[k].i] = avg;
+      pos = end;
+    }
+    return ranks;
+  };
+  var scoreToScale = (score, lo, hi) => lo + (hi - lo) * score;
+  var scoreToStars = (score) => scoreToScale(score, 1, 5);
+  var computeReviewFinalScore = (lb, rel) => 0.75 * lb + 0.25 * rel;
+  var scoreLowerBoundEntries = (entries) => {
+    if (!entries.length)
+      return [];
+    const ranks = avgRanks(entries.map((entry) => entry.lb));
+    const total = entries.length;
+    return entries.map((entry, index) => {
+      const rel = total <= 1 ? 0.5 : ranks[index] / (total - 1);
+      const final = computeReviewFinalScore(entry.lb, rel);
+      return {
+        ...entry,
+        rel,
+        final,
+        finalStars: scoreToStars(final)
+      };
+    });
+  };
+  var scoreScaledRatingEntries = (entries, lo, hi) => scoreLowerBoundEntries(entries.map((entry) => ({
+    ...entry,
+    lb: boundedMeanLB(entry.rating, entry.reviewCount, lo, hi)
+  })));
+  var median = (values) => {
+    const sorted = values.slice().sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2;
+  };
+  var PRICE_SHIFT_PER_DOUBLING = 0.0375;
+  var PRICE_SHIFT_CAP = 0.125;
+  var priceShift = (ratio) => {
+    if (ratio === null || ratio <= 0)
+      return 0;
+    const shift = -PRICE_SHIFT_PER_DOUBLING * Math.log2(ratio);
+    return clip(shift, -PRICE_SHIFT_CAP, PRICE_SHIFT_CAP);
+  };
+  var medianPriceRatios = (prices, minPeers = 3) => {
+    const known = prices.filter((price) => price !== null && price > 0);
+    if (known.length < minPeers)
+      return prices.map(() => null);
+    const mid = median(known);
+    return prices.map((price) => price !== null && price > 0 ? price / mid : null);
+  };
+  var getColorForScore = (score, maxChannel = 255) => {
+    const max = Math.max(0, maxChannel);
+    let r, g;
+    if (score < 0.5) {
+      r = max;
+      g = Math.round(score * 2 * max);
+    } else {
+      r = Math.round((1 - (score - 0.5) * 2) * max);
+      g = max;
+    }
+    return `rgb(${r}, ${g}, 0)`;
+  };
+  var parseReviewCount = (str) => {
+    if (!str)
+      return 0;
+    const trimmed = str.trim();
+    const multiplier = /m/i.test(trimmed) ? 1e6 : /k/i.test(trimmed) ? 1000 : 1;
+    return Math.round(parseFloat(trimmed.replace(/[,kKmM]/g, "")) * multiplier);
+  };
+
+  // src/lib/store.ts
+  var LOCAL_STORAGE_ADAPTER = {
+    name: "localStorage",
+    readText: (key) => {
+      return localStorage.getItem(key);
+    },
+    writeText: (key, value) => {
+      localStorage.setItem(key, value);
+    }
+  };
+  var getAdapters = (adapters) => {
+    return adapters?.length ? adapters : [LOCAL_STORAGE_ADAPTER];
+  };
+  var reportError = (opts, error, ctx) => {
+    opts?.onError?.(error, ctx);
+  };
+  var readRawStore = (key, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        return adapter.readText(key);
+      } catch (error) {
+        reportError(opts, error, {
+          action: "read",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return null;
+  };
+  var readTextStore = (key, fallback, opts) => {
+    const value = readRawStore(key, opts);
+    return value === null ? fallback : value;
+  };
+  var writeTextStore = (key, value, opts) => {
+    for (const adapter of getAdapters(opts?.adapters)) {
+      try {
+        adapter.writeText(key, value);
+        return true;
+      } catch (error) {
+        reportError(opts, error, {
+          action: "write",
+          adapterName: adapter.name,
+          key
+        });
+      }
+    }
+    return false;
+  };
+
+  // src/lib/listing-sort.ts
+  var LISTING_SORT_MODES = [
+    { id: "site", label: "Site order" },
+    { id: "score", label: "Score" },
+    { id: "value", label: "Score + price" }
+  ];
+  var parseListingSortMode = (value) => LISTING_SORT_MODES.find((mode) => mode.id === value)?.id ?? "site";
+  var readListingSortMode = (storeKey) => parseListingSortMode(readTextStore(storeKey, "site"));
+  var listingSortValue = (lb, priceRatio, mode) => {
+    if (lb === null)
+      return null;
+    return mode === "value" ? lb + priceShift(priceRatio) : lb;
+  };
+  var computeChildOrder = (children) => {
+    const rowIndexes = children.flatMap((child, i) => child.isRow ? [i] : []);
+    const firstRow = rowIndexes[0] ?? children.length;
+    const ranked = rowIndexes.slice().sort((a, b) => {
+      const va = children[a].value;
+      const vb = children[b].value;
+      if (va === null || vb === null)
+        return va === vb ? a - b : va === null ? 1 : -1;
+      return vb - va || a - b;
+    });
+    const rank = new Map(ranked.map((index, position) => [index, position]));
+    return children.map((child, i) => {
+      if (child.isRow)
+        return rank.get(i);
+      return i < firstRow ? i - firstRow : rowIndexes.length + i;
+    });
+  };
+  var ORDER_ATTR = "data-lb-sort";
+  var FLEX_ATTR = "data-lb-sort-flex";
+  var CONTROL_STYLE_ID = "lb-listing-sort-style";
+  var CONTROL_CSS = `
+  .lb-listing-sort {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 2147483000;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    border-radius: 999px;
+    background: #fff;
+    color: #1a1a1a;
+    font: 600 12px/1.2 system-ui, sans-serif;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.18);
+  }
+
+  .lb-listing-sort select {
+    border: none;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+  }
+`;
+  var containsCard = (el, cardSel) => el.matches(cardSel) || el.querySelector(cardSel) !== null;
+  var findRow = (card, cardSel) => {
+    let el = card;
+    while (el.parentElement && el.parentElement !== document.body) {
+      const parent = el.parentElement;
+      let cardChildren = 0;
+      for (const child of Array.from(parent.children)) {
+        if (containsCard(child, cardSel) && ++cardChildren >= 2)
+          return el;
+      }
+      el = parent;
+    }
+    return null;
+  };
+  var setOrder = (el, order) => {
+    if (el.style.order !== order)
+      el.style.order = order;
+    if (!el.hasAttribute(ORDER_ATTR))
+      el.setAttribute(ORDER_ATTR, "");
+  };
+  var clearOrder = () => {
+    document.querySelectorAll(`[${ORDER_ATTR}]`).forEach((el) => {
+      el.style.order = "";
+      el.removeAttribute(ORDER_ATTR);
+    });
+    document.querySelectorAll(`[${FLEX_ATTR}]`).forEach((el) => {
+      el.style.display = "";
+      el.style.flexDirection = "";
+      el.removeAttribute(FLEX_ATTR);
+    });
+  };
+  var ensureOrderable = (container) => {
+    if (container.hasAttribute(FLEX_ATTR))
+      return true;
+    const display = getComputedStyle(container).display;
+    if (/flex|grid/.test(display))
+      return true;
+    if (display !== "block")
+      return false;
+    container.style.display = "flex";
+    container.style.flexDirection = "column";
+    container.setAttribute(FLEX_ATTR, "");
+    return true;
+  };
+  var applyListingOrder = (cards, cardSel, mode) => {
+    if (mode === "site") {
+      clearOrder();
+      return;
+    }
+    const rowValues = new Map;
+    cards.forEach(({ card, value }) => {
+      const row = findRow(card, cardSel);
+      if (!row)
+        return;
+      const prev = rowValues.get(row);
+      rowValues.set(row, prev === undefined || prev === null ? value : Math.max(prev, value ?? prev));
+    });
+    const containers = new Set(Array.from(rowValues.keys()).flatMap((row) => row.parentElement ? [row.parentElement] : []));
+    containers.forEach((container) => {
+      if (!ensureOrderable(container))
+        return;
+      const children = Array.from(container.children);
+      const orders = computeChildOrder(children.map((child) => ({
+        isRow: rowValues.has(child),
+        value: rowValues.get(child) ?? null
+      })));
+      children.forEach((child, i) => setOrder(child, String(orders[i])));
+    });
+  };
+  var ensureListingSortControl = (storeKey, onChange) => {
+    const id = `${storeKey}-control`;
+    if (document.getElementById(id))
+      return;
+    injectCSS(CONTROL_STYLE_ID, CONTROL_CSS);
+    const label = document.createElement("label");
+    label.id = id;
+    label.className = "lb-listing-sort";
+    label.append("Sort by");
+    const select = document.createElement("select");
+    LISTING_SORT_MODES.forEach((mode) => {
+      const option = document.createElement("option");
+      option.value = mode.id;
+      option.textContent = mode.label;
+      select.appendChild(option);
+    });
+    select.value = readListingSortMode(storeKey);
+    select.addEventListener("change", () => {
+      writeTextStore(storeKey, select.value);
+      onChange();
+    });
+    label.appendChild(select);
+    document.body.appendChild(label);
+  };
+
+  // src/lib/score-pill.ts
+  var setTextIfChanged = (el, text) => {
+    if (el.textContent !== text)
+      el.textContent = text;
+  };
+  var setAttrIfChanged = (el, name, value) => {
+    if (el.getAttribute(name) !== value)
+      el.setAttribute(name, value);
+  };
+  var upsertScorePill = (container, insert, opts) => {
+    let pill = container.querySelector(`.${opts.className}`);
+    if (!pill) {
+      pill = document.createElement("span");
+      pill.className = opts.className;
+      insert(pill);
+    }
+    setTextIfChanged(pill, opts.text);
+    setAttrIfChanged(pill, "title", opts.title);
+    setAttrIfChanged(pill, "style", `background: ${getColorForScore(opts.rel)}`);
+    return pill;
+  };
+
+  // src/hostelworld.com/hostelworld-score.ts
+  var PILL_CLASS = "hw-score-pill";
+  var SORT_STORE_KEY = "lb-sort-hostelworld";
+  var sels = {
+    card: "a.property-card-container",
+    rating: ".property-rating .rating",
+    score: ".score",
+    reviews: ".num-reviews",
+    price: "strong.notranslate"
+  };
+  var parsePropertyId = (href) => {
+    const match = href.match(/\/hostels\/p\/(\d+)|\/hosteldetails\.php\/[^/]+\/[^/]+\/(\d+)/);
+    return match?.[1] ?? match?.[2] ?? null;
+  };
+  var parseCardRating = (scoreText, reviewsText) => {
+    const rating = Number.parseFloat(scoreText);
+    const reviewCount = parseReviewCount(reviewsText.replace(/[()\s]/g, ""));
+    if (!Number.isFinite(rating) || rating <= 0 || !reviewCount)
+      return null;
+    return { rating, reviewCount };
+  };
+  var parsePrice = (text) => {
+    const match = text.replace(/,/g, "").match(/(\d+(?:\.\d+)?)/);
+    const amount = match ? Number.parseFloat(match[1]) : Number.NaN;
+    return Number.isFinite(amount) && amount > 0 ? amount : null;
+  };
+  var readCardPrice = (card) => {
+    const prices = Array.from(card.querySelectorAll(sels.price), (el) => parsePrice(el.textContent ?? "")).filter((price) => price !== null);
+    return prices.length ? Math.min(...prices) : null;
+  };
+  var toRating = (lb) => scoreToScale(lb, 1, 10).toFixed(1);
+  var readCard = (card) => {
+    const key = parsePropertyId(card.href);
+    const anchor = card.querySelector(sels.rating);
+    if (!key || !anchor)
+      return null;
+    const parsed = parseCardRating(anchor.querySelector(sels.score)?.textContent ?? "", anchor.querySelector(sels.reviews)?.textContent ?? "");
+    return parsed ? { key, ...parsed, anchors: [anchor] } : null;
+  };
+  var scoreCards = () => {
+    const cardsByKey = new Map;
+    const byKey = new Map;
+    document.querySelectorAll(sels.card).forEach((card) => {
+      const key = parsePropertyId(card.href);
+      if (key)
+        cardsByKey.set(key, [...cardsByKey.get(key) ?? [], card]);
+      const entry = readCard(card);
+      if (!entry)
+        return;
+      const existing = byKey.get(entry.key);
+      if (existing)
+        existing.anchors.push(...entry.anchors);
+      else
+        byKey.set(entry.key, entry);
+    });
+    const keys = Array.from(cardsByKey.keys());
+    const ratios = medianPriceRatios(keys.map((key) => readCardPrice((cardsByKey.get(key) ?? [])[0])));
+    const ratioByKey = new Map(keys.map((key, i) => [key, ratios[i]]));
+    const scores = scoreScaledRatingEntries(Array.from(byKey.values()), 1, 10);
+    scores.forEach((score) => {
+      const ratio = ratioByKey.get(score.key) ?? null;
+      const title = `${score.rating.toFixed(1)} Hostelworld rating | ${score.reviewCount.toLocaleString()} reviews | ` + `95% lower bound: ${toRating(score.lb)} | page rank: ${score.rel.toFixed(3)}` + (ratio === null ? "" : ` | lowest price: ${ratio.toFixed(2)}x page median`);
+      score.anchors.forEach((anchor) => {
+        upsertScorePill(anchor, (pill) => anchor.appendChild(pill), {
+          className: PILL_CLASS,
+          text: `Score ${toRating(score.lb)}`,
+          title,
+          rel: score.rel
+        });
+      });
+    });
+    if (scores.length < 2)
+      return;
+    ensureListingSortControl(SORT_STORE_KEY, scoreCards);
+    const mode = readListingSortMode(SORT_STORE_KEY);
+    const lbByKey = new Map(scores.map((score) => [score.key, score.lb]));
+    const sortable = keys.flatMap((key) => {
+      const value = listingSortValue(lbByKey.get(key) ?? null, ratioByKey.get(key) ?? null, mode);
+      return (cardsByKey.get(key) ?? []).map((card) => ({ card, value }));
+    });
+    applyListingOrder(sortable, sels.card, mode);
+  };
+  var startCardScores = () => {
+    scoreCards();
+    observeDomChanges(scoreCards, { root: document.body, debounceMs: 300 }).observe();
+  };
 
   // src/hostelworld.com/hostelworld.user.ts
   var PANEL_ID = "hw-review-search-panel";
@@ -1141,6 +1633,8 @@
       hwInit();
     }, { debounceMs: 600 });
     hwInit();
+    injectHwStyles();
+    startCardScores();
   };
   runWhenReady(hwBootstrap);
 })();
