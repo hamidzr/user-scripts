@@ -1,6 +1,6 @@
 # Google Userscripts
 
-Two userscripts for Google: Booking and Super links on Google Travel hotel pages, and a redirect that skips the results page for "Feeling Lucky" searches.
+Shortcuts for Google Travel, Flights, Maps and Search: booking links on hotel pages, destination weather, saving places to a Roamline trip, and lucky redirects.
 
 ## Google Travel Links
 
@@ -14,6 +14,26 @@ Adds quick search links to the header of a hotel page on `google.com/travel/*`.
 
 ![Google Travel Links screenshot](./demo/google-travel-booking-super-links.jpg)
 
+## Google Flights Roamline Climate
+
+Shows the usual weather for your travel month on Google Flights Explore, from [Roamline](https://roamline.lbyte.app)'s monthly climate averages.
+
+- adds a line under each destination card: temperature range, rainy days, and sunshine for the month the trip starts
+- adds a short version to the price labels on the map
+- links each card to the city's Roamline page
+- shows Fahrenheit for US English browsers and Celsius everywhere else
+- needs no account; it reads Roamline's public climate data and caches it for a day
+
+## Add to Roamline
+
+Adds an "Add to Roamline" button to Google Maps place pages, so a place you find on the map goes straight into a [Roamline](https://roamline.lbyte.app) trip.
+
+- sends the open place to a trip's pool of ideas, or to the end of one of its routes
+- remembers the last trip and route you picked
+- keeps only the place's name, its category, its point, and Google's place id
+- signs in with a Roamline token you create under Agent access, kept in your userscript manager's storage
+- is built and served by Roamline itself, so it updates with each Roamline release
+
 ## Google Feeling Lucky Redirect
 
 Skips the results page for "Feeling Lucky" style searches.
@@ -24,4 +44,5 @@ Skips the results page for "Feeling Lucky" style searches.
 ## Limitations
 
 - Google Travel Links only works on individual hotel pages, not on search result lists
-- both scripts depend on Google's page markup, which can change
+- the Roamline scripts need roamline.lbyte.app to be reachable, and Add to Roamline needs a free Roamline account
+- all of them depend on Google's page markup, which can change

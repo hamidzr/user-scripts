@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name                 Gemini Auto-focus
 // @author               AZ
-// @description          focus the editor, default to the 4 Argon model with Medium thinking, and map Ctrl+N / Ctrl+F to Gemini actions
+// @description          focus the editor, default to the 4 Neon model with Medium thinking on each chat load, and map Ctrl+N / Ctrl+F to Gemini actions
 // @downloadURL          https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
 // @grant                GM_getValue
 // @grant                GM_setValue
@@ -11,7 +11,7 @@
 // @namespace            https://latentbyte.com/products
 // @run-at               document-idle
 // @updateURL            https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/gemini.google.com/gemini.user.js
-// @version              1.6.2
+// @version              1.7.0
 // ==/UserScript==
 
 'use strict';
@@ -193,9 +193,10 @@
   var MODE_BTN_SEL = 'button[data-test-id="bard-mode-menu-button"]';
   var MODEL_OPTION_SEL = '[data-test-id^="bard-mode-option-"]';
   var THINKING_ITEM_SEL = 'gem-menu-item[value="thinking_level"]';
+  var SEND_BTN_SEL = 'button[aria-label="Send message"]';
   var KEY_ENABLED = "autoSwitchEnabled";
-  var KEY_PATTERN = "modelPattern";
-  var DEFAULT_PATTERN = "Argon";
+  var KEY_PATTERN = "modelPatternV2";
+  var DEFAULT_PATTERN = "Neon";
   var THINKING_LEVEL = "Medium";
   var PICKER_TIMEOUT_MS = 180000;
   var isAutoSwitchEnabled = () => GM_getValue(KEY_ENABLED, "1") !== "0";
@@ -213,7 +214,7 @@
     updateToggleLabel();
     GM_registerMenuCommand("Set model pattern (regex)...", () => {
       const current = getModelPattern();
-      const input = prompt("Model name regex (e.g. Argon, Pro, Flash):", current);
+      const input = prompt("Model name regex (e.g. Neon, Hydrogen, Carbon):", current);
       if (input === null)
         return;
       const trimmed = input.trim();
@@ -263,11 +264,8 @@
   var getSearchButton = () => {
     return document.querySelector(SEARCH_SEL);
   };
-  var isNewChat = () => {
-    const path = window.location.pathname;
-    return path === "/app" || path === "/app/" || path === "/";
-  };
-  var running = false;
+  var isNewChatPath = (path) => path === "/app" || path === "/app/" || path === "/";
+  var loadId = 0;
   var selectThinkingLevel = async (modeBtn) => {
     await pollUntil(() => isMenuOpen(modeBtn) ? null : true, 2000);
     modeBtn.click();
@@ -278,15 +276,14 @@
       option.click();
   };
   var selectModel = async () => {
-    if (!isNewChat() || running)
-      return;
-    running = true;
+    const id = ++loadId;
+    const isStale = () => id !== loadId;
     const autoSwitch = isAutoSwitchEnabled();
     const pattern = (() => {
       try {
         return new RegExp(getModelPattern(), "i");
       } catch {
-        return /Argon/i;
+        return new RegExp(DEFAULT_PATTERN, "i");
       }
     })();
     let modeBtn = null;
@@ -296,7 +293,7 @@
         const btn = document.querySelector(MODE_BTN_SEL);
         return btn?.textContent?.trim() ? btn : null;
       }, 5000);
-      if (!isNewChat())
+      if (isStale())
         return;
       const needsModel = autoSwitch && !pattern.test(modeBtn.textContent?.trim() ?? "");
       const needsThinking = !hasThinkingLevel(modeBtn, THINKING_LEVEL);
@@ -310,7 +307,7 @@
         const targetOption = await pollUntil(() => findModelOption(pattern), 3000);
         targetOption.click();
       }
-      if (needsThinking)
+      if (needsThinking && !isStale())
         await selectThinkingLevel(modeBtn);
       if (editor && (savedHTML || hadFocus)) {
         requestAnimationFrame(() => {
@@ -324,15 +321,41 @@
     } catch {
       if (modeBtn && isMenuOpen(modeBtn))
         modeBtn.click();
-    } finally {
-      running = false;
     }
+  };
+  var lastPath = window.location.pathname;
+  var sentFromPath = null;
+  var markSent = () => {
+    sentFromPath = window.location.pathname;
+  };
+  document.addEventListener("click", (e) => {
+    if (e.target?.closest?.(SEND_BTN_SEL))
+      markSent();
+  }, true);
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.shiftKey || e.isComposing)
+      return;
+    const editor = e.target?.closest?.(EDITOR_SEL);
+    if (editor?.textContent?.trim())
+      markSent();
+  }, true);
+  var onLocationChange = () => {
+    const path = window.location.pathname;
+    if (path === lastPath)
+      return;
+    const prev = lastPath;
+    lastPath = path;
+    const sentHere = sentFromPath === prev;
+    sentFromPath = null;
+    if (sentHere && isNewChatPath(prev))
+      return;
+    selectModel();
   };
   registerMenuCommands();
   window.addEventListener("focus", focusEditor);
   bindCtrlNToClick(getNewChatLink);
   bindShortcutToClick(getSearchButton, { key: "f", ctrlKey: true });
-  watchLocationChange(() => selectModel(), { debounceMs: 300 });
+  watchLocationChange(onLocationChange, { debounceMs: 300 });
   var main = () => {
     focusEditor();
     selectModel();

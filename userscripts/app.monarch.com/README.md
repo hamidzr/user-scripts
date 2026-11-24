@@ -1,6 +1,6 @@
 # Monarch Money
 
-Two userscripts for Monarch Money: shift-click to select and export many transactions at once, and export your investment holdings to CSV.
+Shift-click to select and export many Monarch transactions, export holdings to CSV, and download holdings or accounts for the Investments app.
 
 ## Monarch Bulk Select
 
@@ -28,3 +28,21 @@ Adds an **Export CSV** button next to Accounts on the investment holdings page (
 - Holdings without a ticker put the name in Name and leave Symbol blank.
 - File name: `monarch-holdings-YYYY-MM-DD.csv`, UTF-8 with a BOM so Excel opens it cleanly.
 - If the table has no rows yet, an alert asks you to wait for it to load.
+
+## Investments: Monarch holdings
+
+Downloads your Monarch holdings as a file the [Investments](https://investments.lbyte.app) app imports.
+
+- adds a **Download holdings for Investments** button, which turns on once you open the Holdings page
+- keeps only the two holdings responses the page already loads, saved as a small HAR file with no headers or cookies
+- file name: `monarch-holdings-YYYY-MM-DD.json`; import it on the Investments Import page
+- is built and served by Investments itself, so it updates with each Investments release
+
+## Investments: Monarch accounts
+
+Downloads your Monarch account list, with the institution of each account, for the [Investments](https://investments.lbyte.app) app.
+
+- adds a **Download accounts for Investments** button
+- asks Monarch for the accounts it shows you, using the page's signed-in session
+- file name: `monarch-accounts-YYYY-MM-DD.json`, with no credentials in it
+- is built and served by Investments itself, so it updates with each Investments release

@@ -75,9 +75,19 @@
     {
       "site": "app.monarch.com",
       "title": "Monarch Money Userscripts",
-      "summary": "Two userscripts for Monarch Money: shift-click to select and export many transactions at once, and export your investment holdings to CSV.",
+      "summary": "Shift-click to select and export many Monarch transactions, export holdings to CSV, and download holdings or accounts for the Investments app.",
       "pageUrl": "https://latentbyte.com/products/monarch-money-userscripts",
       "scripts": [
+        {
+          "name": "Investments: Monarch accounts",
+          "description": "Download your Monarch account list, with each account's institution, for the Investments app",
+          "version": "3",
+          "matches": [
+            "https://app.monarch.com/*",
+            "https://app.monarchmoney.com/*"
+          ],
+          "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-accounts.user.js"
+        },
         {
           "name": "Monarch Bulk Select",
           "description": "Shift-click transaction checkboxes in Monarch and export selected transactions",
@@ -97,6 +107,16 @@
             "https://app.monarchmoney.com/*"
           ],
           "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch-holdings-export.user.js"
+        },
+        {
+          "name": "Investments: Monarch holdings",
+          "description": "Download your Monarch holdings as a file the Investments app imports",
+          "version": "2",
+          "matches": [
+            "https://app.monarch.com/*",
+            "https://app.monarchmoney.com/*"
+          ],
+          "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.monarch.com/monarch.user.js"
         }
       ]
     },
@@ -114,6 +134,23 @@
             "https://app.t3.codes/*"
           ],
           "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.t3.codes/close-handoff-tab.user.js"
+        }
+      ]
+    },
+    {
+      "site": "app.useorigin.com",
+      "title": "Origin Userscripts",
+      "summary": "Download your Origin accounts and holdings as one file that the Investments app imports, so you can see your portfolio's sector mix and plan rebalancing.",
+      "pageUrl": "https://latentbyte.com/products/origin-userscripts",
+      "scripts": [
+        {
+          "name": "Investments: Origin holdings",
+          "description": "Download your Origin holdings as a file the Investments app imports",
+          "version": "2",
+          "matches": [
+            "https://app.useorigin.com/*"
+          ],
+          "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/app.useorigin.com/origin.user.js"
         }
       ]
     },
@@ -275,13 +312,13 @@
     {
       "site": "gemini.google.com",
       "title": "Gemini Userscripts",
-      "summary": "This userscript keeps the Gemini prompt box focused, selects the 4 Argon model with Medium thinking on new chats, and adds Ctrl+N and Ctrl+F shortcuts.",
+      "summary": "This userscript keeps the Gemini prompt box focused, selects the 4 Neon model with Medium thinking each time a chat loads, and adds Ctrl+N and Ctrl+F shortcuts.",
       "pageUrl": "https://latentbyte.com/products/gemini-userscripts",
       "scripts": [
         {
           "name": "Gemini Auto-focus",
-          "description": "Focus the editor, default to the 4 Argon model with Medium thinking, and map Ctrl+N / Ctrl+F to Gemini actions",
-          "version": "1.6.2",
+          "description": "Focus the editor, default to the 4 Neon model with Medium thinking on each chat load, and map Ctrl+N / Ctrl+F to Gemini actions",
+          "version": "1.7.0",
           "matches": [
             "https://gemini.google.com/*"
           ],
@@ -319,9 +356,19 @@
     {
       "site": "google.com",
       "title": "Google Userscripts",
-      "summary": "Two userscripts for Google: Booking and Super links on Google Travel hotel pages, and a redirect that skips the results page for \"Feeling Lucky\" searches.",
+      "summary": "Shortcuts for Google Travel, Flights, Maps and Search: booking links on hotel pages, destination weather, saving places to a Roamline trip, and lucky redirects.",
       "pageUrl": "https://latentbyte.com/products/google-userscripts",
       "scripts": [
+        {
+          "name": "Add to Roamline",
+          "description": "Send a place open in Google Maps to a Roamline trip or route.",
+          "version": "1.0.1795496583",
+          "matches": [
+            "https://www.google.com/maps/*",
+            "https://google.com/maps/*"
+          ],
+          "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/google.com/add-to-roamline.user.js"
+        },
         {
           "name": "Google Feeling Lucky Redirect",
           "description": "Automatically redirects to the first result when a \"Feeling Lucky\" search link is opened",
@@ -331,6 +378,15 @@
             "https://*.google.com/url?q=*"
           ],
           "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/google.com/google-feeling-lucky.user.js"
+        },
+        {
+          "name": "Google Flights Roamline Climate",
+          "description": "Shows Roamline's usual weather for the travel month on Google Flights Explore destinations",
+          "version": "0.3.0",
+          "matches": [
+            "https://www.google.com/travel/*"
+          ],
+          "installUrl": "https://raw.githubusercontent.com/hamidzr/user-scripts/refs/heads/master/userscripts/google.com/google-flights-roamline.user.js"
         },
         {
           "name": "Google Travel Links",
